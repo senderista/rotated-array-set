@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Iter","An iterator over the items of a `SortedVec`."],["SortedVec","A set based on a 2-level rotated array."]]});
