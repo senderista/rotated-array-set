@@ -1,3 +1,6 @@
+#![doc(html_root_url = "https://senderista.github.io/sorted-vec/")]
+#![doc(html_logo_url = "https://raw.githubusercontent.com/senderista/sorted-vec/master/cells.png")]
+
 #![feature(copied)]
 #![feature(copy_within)]
 #![feature(is_sorted)]
