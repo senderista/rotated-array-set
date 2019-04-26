@@ -13,7 +13,7 @@ use std::iter::{DoubleEndedIterator, ExactSizeIterator, FromIterator, FusedItera
 
 /// A set based on a 2-level rotated array.
 ///
-/// See [README.md] for a detailed discussion of this collection's performance
+/// See <a href="https://github.com/senderista/sorted-vec/blob/master/README.md">the repository README</a> for a detailed discussion of this collection's performance
 /// benefits and drawbacks.
 ///
 /// # Examples
@@ -53,7 +53,7 @@ pub struct SortedVec<T> {
 
 /// An iterator over the items of a `SortedVec`.
 ///
-/// This `struct` is created by the [`iter`] method on [`SortedVec`].
+/// This `struct` is created by the `iter()` method on `SortedVec`.
 /// See its documentation for more.
 #[derive(Debug)]
 pub struct Iter<'a, T: 'a> {
