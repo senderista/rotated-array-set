@@ -53,8 +53,8 @@ pub struct SortedVec<T> {
 
 /// An iterator over the items of a `SortedVec`.
 ///
-/// This `struct` is created by the `iter` method on `SortedVec`.
-/// See [its documentation](SortedVec::iter) for more.
+/// This `struct` is created by the [`iter`] method on [`SortedVec`].
+/// See its documentation for more.
 #[derive(Debug)]
 pub struct Iter<'a, T: 'a> {
     container: &'a SortedVec<T>,
