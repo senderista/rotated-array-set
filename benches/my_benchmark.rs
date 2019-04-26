@@ -19,7 +19,7 @@ lazy_static! {
         s[0..SEED_STR.bytes().len()].copy_from_slice(SEED_STR.as_bytes());
         s
     };
-    static ref SIZES: Vec<usize> = (10..=26).map(|i| 1 << i).collect::<Vec<_>>();
+    static ref SIZES: Vec<usize> = (10..=24).map(|i| 1 << i).collect();
 }
 
 fn my_bench(c: &mut Criterion) {
