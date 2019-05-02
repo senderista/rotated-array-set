@@ -15,7 +15,7 @@ use std::collections::BTreeSet;
 
 const SEED: u64 = u64::from_be_bytes(*b"cafebabe");
 lazy_static! {
-    static ref SIZES: Vec<usize> = (10..=24).map(|i| 1 << i).collect();
+    static ref SIZES: Vec<usize> = (10..=27).map(|i| 1 << i).collect();
 }
 
 fn find(c: &mut Criterion) {
