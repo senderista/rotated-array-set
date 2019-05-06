@@ -1,7 +1,6 @@
 #![doc(html_root_url = "https://senderista.github.io/sorted-vec/")]
 #![doc(html_logo_url = "https://raw.githubusercontent.com/senderista/sorted-vec/master/cells.png")]
 
-#![feature(copied)]
 #![feature(copy_within)]
 #![feature(is_sorted)]
 #![feature(iter_nth_back)]
@@ -856,7 +855,6 @@ mod tests {
     use std::collections::BTreeSet;
     use std::time::Instant;
 
-    // TODO: replace with a real benchmark using cargo bench/criterion.rs
     #[test]
     fn naive_benchmark() {
         for i in 10..29 {
