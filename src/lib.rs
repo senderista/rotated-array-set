@@ -52,13 +52,26 @@ pub struct SortedVec<T> {
 
 /// An iterator over the items of a `SortedVec`.
 ///
-/// This `struct` is created by the `iter()` method on `SortedVec`.
+/// This `struct` is created by the [`iter`] method on [`SortedVec`][`SortedVec`].
 /// See its documentation for more.
 #[derive(Debug)]
 pub struct Iter<'a, T: 'a> {
     container: &'a SortedVec<T>,
     next_index: usize,
     next_rev_index: usize,
+}
+
+/// An owning iterator over the items of a `SortedVec`.
+///
+/// This `struct` is created by the [`into_iter`] method on [`SortedVec`][`SortedVec`]
+/// (provided by the `IntoIterator` trait). See its documentation for more.
+///
+/// [`SortedVec`]: struct.SortedVec.html
+/// [`into_iter`]: struct.SortedVec.html#method.into_iter
+#[derive(Debug)]
+pub struct IntoIter<T> {
+    vec: Vec<T>,
+    next_index: usize,
 }
 
 impl<T> SortedVec<T>
@@ -792,6 +805,38 @@ where
     }
 }
 
+impl<T> IntoIterator for SortedVec<T>
+where
+    T: Ord + Copy + Default + Debug,
+{
+    type Item = T;
+    type IntoIter = IntoIter<T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        IntoIter {
+            vec: self.into(),
+            next_index: 0,
+        }
+    }
+}
+
+impl<'a, T> Iterator for IntoIter<T>
+where
+    T: Ord + Copy + Default + Debug,
+{
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.next_index >= self.vec.len() {
+            None
+        } else {
+            let current = self.vec[self.next_index];
+            self.next_index += 1;
+            Some(current)
+        }
+    }
+}
+
 impl<'a, T> From<&'a [T]> for SortedVec<T>
 where
     T: Ord + Copy + Default + Debug,
@@ -822,6 +867,28 @@ where
     }
 }
 
+impl<T> Into<Vec<T>> for SortedVec<T>
+where
+    T: Ord + Copy + Default + Debug,
+{
+    fn into(mut self) -> Vec<T> {
+        // sort the data array in-place and steal it from self
+        for (i, &pivot) in self.min_indexes.iter().enumerate() {
+            let subarray_start_idx = Self::get_array_idx_from_subarray_idx(i);
+            let subarray_len = if i == self.min_indexes.len() - 1 {
+                self.data.len() - subarray_start_idx
+            } else {
+                i + 1
+            };
+            let subarray_end_idx = subarray_start_idx + subarray_len;
+            let subarray = &mut self.data[subarray_start_idx..subarray_end_idx];
+            // sort subarray in-place
+            subarray.rotate_left(pivot);
+        }
+        self.data
+    }
+}
+
 impl<T> FromIterator<T> for SortedVec<T>
 where
     T: Ord + Copy + Default + Debug,
@@ -849,125 +916,17 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::distributions::Uniform;
-    use rand::rngs::StdRng;
-    use rand::{Rng, SeedableRng};
-    use std::collections::BTreeSet;
-    use std::time::Instant;
-
-    #[test]
-    fn naive_benchmark() {
-        for i in 10..29 {
-            println!();
-            println!("2^{} elements\n", i);
-            let num_elems = 1u64 << i;
-            let universe = num_elems * num_elems;
-            let median_val = universe / 2;
-            let seed_str = "cafebabe";
-            let mut seed: [u8; 32] = Default::default();
-            seed[0..seed_str.bytes().len()].copy_from_slice(seed_str.as_bytes());
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
-            let range = Uniform::new_inclusive(1, num_elems * num_elems);
-            let iter = rng.sample_iter(&range).take(num_elems as usize);
-            let start = Instant::now();
-            let mut sorted_vec: SortedVec<_> = SortedVec::from_iter(iter);
-            let sorted_vec_cons_duration = start.elapsed();
-            println!(
-                "SortedVec construction time: {:?}",
-                sorted_vec_cons_duration
-            );
-            let iter = rng.sample_iter(&range).take(num_elems as usize);
-            let start = Instant::now();
-            let mut vec = Vec::from_iter(iter);
-            vec.sort_unstable();
-            let vec_cons_duration = start.elapsed();
-            println!("Vec construction time: {:?}", vec_cons_duration);
-            let iter = rng.sample_iter(&range).take(num_elems as usize);
-            let start = Instant::now();
-            let mut btree = BTreeSet::from_iter(iter);
-            let btree_cons_duration = start.elapsed();
-            println!("BTreeSet construction time: {:?}", btree_cons_duration);
-            let start = Instant::now();
-            sorted_vec.insert(median_val);
-            let sorted_vec_insert_duration = start.elapsed();
-            println!("SortedVec insert time: {:?}", sorted_vec_insert_duration);
-            let start = Instant::now();
-            let pos = vec.binary_search(&median_val).err().unwrap();
-            vec.insert(pos, median_val);
-            let vec_insert_duration = start.elapsed();
-            println!("Vec insert time: {:?}", vec_insert_duration);
-            let start = Instant::now();
-            btree.insert(median_val);
-            let btree_insert_duration = start.elapsed();
-            println!("BTreeSet insert time: {:?}", btree_insert_duration);
-            let start = Instant::now();
-            sorted_vec.get(&median_val).unwrap();
-            let sorted_vec_search_duration = start.elapsed();
-            println!("SortedVec search time: {:?}", sorted_vec_search_duration);
-            let start = Instant::now();
-            vec.binary_search(&median_val).unwrap();
-            let vec_search_duration = start.elapsed();
-            println!("Vec search time: {:?}", vec_search_duration);
-            let start = Instant::now();
-            btree.get(&median_val).unwrap();
-            let btree_search_duration = start.elapsed();
-            println!("BTreeSet search time: {:?}", btree_search_duration);
-            let start = Instant::now();
-            sorted_vec.remove(&median_val);
-            let sorted_vec_remove_duration = start.elapsed();
-            println!("SortedVec remove time: {:?}", sorted_vec_remove_duration);
-            let start = Instant::now();
-            let pos = vec.binary_search(&median_val).unwrap();
-            vec.remove(pos);
-            let vec_remove_duration = start.elapsed();
-            println!("Vec remove time: {:?}", vec_remove_duration);
-            let start = Instant::now();
-            btree.remove(&median_val);
-            let btree_remove_duration = start.elapsed();
-            println!("BTreeSet remove time: {:?}", btree_remove_duration);
-            println!();
-            println!(
-                "BTreeSet construction slowdown over Vec: {}",
-                btree_cons_duration.as_float_secs() / vec_cons_duration.as_float_secs()
-            );
-            println!(
-                "BTreeSet insert speedup over Vec: {}",
-                vec_insert_duration.as_float_secs() / btree_insert_duration.as_float_secs()
-            );
-            println!(
-                "BTreeSet remove speedup over Vec: {}",
-                vec_remove_duration.as_float_secs() / btree_remove_duration.as_float_secs()
-            );
-            println!(
-                "BTreeSet search speedup over Vec: {}",
-                vec_search_duration.as_float_secs() / btree_search_duration.as_float_secs()
-            );
-            println!();
-            println!(
-                "SortedVec insert speedup over Vec: {}",
-                vec_insert_duration.as_float_secs() / sorted_vec_insert_duration.as_float_secs()
-            );
-            println!(
-                "SortedVec remove speedup over Vec: {}",
-                vec_remove_duration.as_float_secs() / sorted_vec_remove_duration.as_float_secs()
-            );
-            println!(
-                "SortedVec search slowdown over Vec: {}",
-                sorted_vec_search_duration.as_float_secs() / vec_search_duration.as_float_secs()
-            );
-        }
-    }
+    use rand::prelude::*;
+    use rand::distributions::Standard;
+    use rand::rngs::SmallRng;
 
     #[test]
     fn validate() {
         let num_elems = 1usize << 16;
-        let seed_str = "cafebabe";
-        let mut seed: [u8; 32] = Default::default();
-        seed[0..seed_str.bytes().len()].copy_from_slice(seed_str.as_bytes());
-        let mut rng: StdRng = SeedableRng::from_seed(seed);
-        let range = Uniform::new_inclusive(1, num_elems * num_elems * num_elems);
-        let iter = rng.sample_iter(&range).take(num_elems as usize);
-        let mut sorted_vec: SortedVec<_> = SortedVec::new();
+        let seed = u64::from_be_bytes(*b"cafebabe");
+        let mut rng: SmallRng = SeedableRng::seed_from_u64(seed);
+        let iter = rng.sample_iter(&Standard).take(num_elems as usize);
+        let mut sorted_vec: SortedVec<usize> = SortedVec::new();
         for v in iter {
             assert!(sorted_vec.insert(v));
         }
@@ -976,11 +935,35 @@ mod tests {
             let y = sorted_vec.get(x).unwrap();
             assert_eq!(*x, *y);
         }
-        let mut rng: StdRng = SeedableRng::from_seed(seed);
-        let iter = rng.sample_iter(&range).take(num_elems as usize);
+        let mut rng: SmallRng = SeedableRng::seed_from_u64(seed);
+        let iter = rng.sample_iter(&Standard).take(num_elems as usize);
         for v in iter {
             assert!(sorted_vec.remove(&v));
         }
         assert!(sorted_vec.is_empty());
+    }
+
+    #[test]
+    fn compare_iter() {
+        let num_elems = 1usize << 16;
+        let seed = u64::from_be_bytes(*b"cafebabe");
+        let mut rng: SmallRng = SeedableRng::seed_from_u64(seed);
+        let sorted_vec: SortedVec<usize> = rng.sample_iter(&Standard).take(num_elems as usize).collect();
+        let iter = sorted_vec.iter();
+        for (i, &v) in iter.enumerate() {
+            assert!(*sorted_vec.at(i).unwrap() == v);
+        }
+    }
+
+    #[test]
+    fn compare_into_iter() {
+        let num_elems = 1usize << 16;
+        let seed = u64::from_be_bytes(*b"cafebabe");
+        let mut rng: SmallRng = SeedableRng::seed_from_u64(seed);
+        let sorted_vec: SortedVec<usize> = rng.sample_iter(&Standard).take(num_elems as usize).collect();
+        let mut iter = sorted_vec.clone().into_iter();
+        for i in 0..num_elems {
+            assert!(*sorted_vec.at(i).unwrap() == iter.next().unwrap());
+        }
     }
 }
