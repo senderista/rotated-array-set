@@ -4,7 +4,7 @@
 #![feature(copy_within)]
 #![feature(is_sorted)]
 #![feature(iter_nth_back)]
-#![feature(duration_float)]
+#![feature(const_int_conversion)]
 
 use std::cmp::min;
 use std::fmt::Debug;
@@ -153,6 +153,49 @@ where
         Some(&self.data[real_idx])
     }
 
+    ///
+    /// Returns the rank of the value in the set if it exists (as Result::Ok),
+    /// or the rank of its largest predecessor plus one, if it does not exist (as Result::Err).
+    /// This is a constant-time operation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sorted_vec::SortedVec;
+    ///
+    /// let set: SortedVec<_> = vec![1, 2, 3].into();
+    /// assert_eq!(set.rank(&1), Ok(0));
+    /// assert_eq!(set.rank(&4), Err(3));
+    /// ```
+    pub fn rank(&self, value: &T) -> Result<usize, usize> {
+        let (real_index, exists) = match self.find_real_index(value) {
+            Ok(index) => (index, true),
+            Err(index) => (index, false)
+        };
+        if real_index == self.data.len() {
+            return Err(real_index);
+        }
+        debug_assert!(real_index < self.data.len());
+        let subarray_idx = Self::get_subarray_idx_from_array_idx(real_index);
+        let subarray_start_idx = Self::get_array_idx_from_subarray_idx(subarray_idx);
+        let subarray_len = if subarray_idx == self.min_indexes.len() - 1 {
+            self.data.len() - subarray_start_idx
+        } else {
+            subarray_idx + 1
+        };
+        let pivot_idx = subarray_start_idx + self.min_indexes[subarray_idx];
+        let logical_index = if real_index >= pivot_idx {
+            subarray_start_idx + real_index - pivot_idx
+        } else {
+            subarray_start_idx + subarray_len - (pivot_idx - real_index)
+        };
+        if exists {
+            Ok(logical_index)
+        } else {
+            Err(logical_index)
+        }
+    }
+
     /// Returns a reference to the value in the set, if any, with the given rank.
     ///
     /// This is a constant-time operation.
@@ -163,10 +206,10 @@ where
     /// use sorted_vec::SortedVec;
     ///
     /// let set: SortedVec<_> = vec![1, 2, 3].into();
-    /// assert_eq!(set.at(0), Some(&1));
-    /// assert_eq!(set.at(3), None);
+    /// assert_eq!(set.select(0), Some(&1));
+    /// assert_eq!(set.select(3), None);
     /// ```
-    pub fn at(&self, rank: usize) -> Option<&T> {
+    pub fn select(&self, rank: usize) -> Option<&T> {
         if rank >= self.data.len() {
             return None;
         }
@@ -713,7 +756,7 @@ where
         if self.next_index > self.next_rev_index {
             None
         } else {
-            let current = self.container.at(self.next_index);
+            let current = self.container.select(self.next_index);
             self.next_index += 1;
             current
         }
@@ -724,7 +767,7 @@ where
         if self.next_index > self.next_rev_index {
             None
         } else {
-            let nth = self.container.at(self.next_index);
+            let nth = self.container.select(self.next_index);
             self.next_index += 1;
             nth
         }
@@ -735,15 +778,15 @@ where
     }
 
     fn last(self) -> Option<Self::Item> {
-        self.container.at(self.container.data.len() - 1)
+        self.container.select(self.container.data.len() - 1)
     }
 
     fn max(self) -> Option<Self::Item> {
-        self.container.at(self.len() - 1)
+        self.container.select(self.len() - 1)
     }
 
     fn min(self) -> Option<Self::Item> {
-        self.container.at(0)
+        self.container.select(0)
     }
 
     fn is_sorted(self) -> bool {
@@ -764,7 +807,7 @@ where
         if self.next_rev_index < self.next_index {
             None
         } else {
-            let current = self.container.at(self.next_rev_index);
+            let current = self.container.select(self.next_rev_index);
             self.next_rev_index -= 1;
             current
         }
@@ -775,7 +818,7 @@ where
         if self.next_rev_index < self.next_index {
             None
         } else {
-            let nth = self.container.at(self.next_index);
+            let nth = self.container.select(self.next_index);
             self.next_rev_index -= 1;
             nth
         }
@@ -873,7 +916,7 @@ where
 {
     fn into(mut self) -> Vec<T> {
         // sort the data array in-place and steal it from self
-        for (i, &pivot) in self.min_indexes.iter().enumerate() {
+        for (i, &pivot_offset) in self.min_indexes.iter().enumerate() {
             let subarray_start_idx = Self::get_array_idx_from_subarray_idx(i);
             let subarray_len = if i == self.min_indexes.len() - 1 {
                 self.data.len() - subarray_start_idx
@@ -883,7 +926,7 @@ where
             let subarray_end_idx = subarray_start_idx + subarray_len;
             let subarray = &mut self.data[subarray_start_idx..subarray_end_idx];
             // sort subarray in-place
-            subarray.rotate_left(pivot);
+            subarray.rotate_left(pivot_offset);
         }
         self.data
     }
@@ -920,23 +963,19 @@ mod tests {
     use rand::distributions::Standard;
     use rand::rngs::SmallRng;
 
+    const NUM_ELEMS: usize = 1 << 10;
+    const SEED: u64 = u64::from_be_bytes(*b"cafebabe");
+
     #[test]
-    fn validate() {
-        let num_elems = 1usize << 16;
-        let seed = u64::from_be_bytes(*b"cafebabe");
-        let mut rng: SmallRng = SeedableRng::seed_from_u64(seed);
-        let iter = rng.sample_iter(&Standard).take(num_elems as usize);
+    fn insert_remove() {
+        let mut rng: SmallRng = SeedableRng::seed_from_u64(SEED);
+        let iter = rng.sample_iter(&Standard).take(NUM_ELEMS);
         let mut sorted_vec: SortedVec<usize> = SortedVec::new();
         for v in iter {
             assert!(sorted_vec.insert(v));
         }
-        for i in 0..num_elems as usize {
-            let x = sorted_vec.at(i).unwrap();
-            let y = sorted_vec.get(x).unwrap();
-            assert_eq!(*x, *y);
-        }
-        let mut rng: SmallRng = SeedableRng::seed_from_u64(seed);
-        let iter = rng.sample_iter(&Standard).take(num_elems as usize);
+        let mut rng: SmallRng = SeedableRng::seed_from_u64(SEED);
+        let iter = rng.sample_iter(&Standard).take(NUM_ELEMS);
         for v in iter {
             assert!(sorted_vec.remove(&v));
         }
@@ -944,26 +983,47 @@ mod tests {
     }
 
     #[test]
+    fn rank_select() {
+        let mut rng: SmallRng = SeedableRng::seed_from_u64(SEED);
+        let iter = rng.sample_iter(&Standard).take(NUM_ELEMS);
+        let mut sorted_vec: SortedVec<usize> = SortedVec::new();
+        for v in iter {
+            assert!(sorted_vec.insert(v));
+        }
+        let mut rng: SmallRng = SeedableRng::seed_from_u64(SEED);
+        let iter = rng.sample_iter(&Standard).take(NUM_ELEMS);
+        for v1 in iter {
+            let p = sorted_vec.rank(&v1).unwrap();
+            let v2 = *sorted_vec.select(p).unwrap();
+            assert!(v1 == v2);
+        }
+    }
+
+    #[test]
     fn compare_iter() {
-        let num_elems = 1usize << 16;
-        let seed = u64::from_be_bytes(*b"cafebabe");
-        let mut rng: SmallRng = SeedableRng::seed_from_u64(seed);
-        let sorted_vec: SortedVec<usize> = rng.sample_iter(&Standard).take(num_elems as usize).collect();
+        let mut rng: SmallRng = SeedableRng::seed_from_u64(SEED);
+        let iter = rng.sample_iter(&Standard).take(NUM_ELEMS);
+        let mut sorted_vec: SortedVec<usize> = SortedVec::new();
+        for v in iter {
+            assert!(sorted_vec.insert(v));
+        }
         let iter = sorted_vec.iter();
         for (i, &v) in iter.enumerate() {
-            assert!(*sorted_vec.at(i).unwrap() == v);
+            assert!(*sorted_vec.select(i).unwrap() == v);
         }
     }
 
     #[test]
     fn compare_into_iter() {
-        let num_elems = 1usize << 16;
-        let seed = u64::from_be_bytes(*b"cafebabe");
-        let mut rng: SmallRng = SeedableRng::seed_from_u64(seed);
-        let sorted_vec: SortedVec<usize> = rng.sample_iter(&Standard).take(num_elems as usize).collect();
+        let mut rng: SmallRng = SeedableRng::seed_from_u64(SEED);
+        let iter = rng.sample_iter(&Standard).take(NUM_ELEMS as usize);
+        let mut sorted_vec: SortedVec<usize> = SortedVec::new();
+        for v in iter {
+            assert!(sorted_vec.insert(v));
+        }
         let mut iter = sorted_vec.clone().into_iter();
-        for i in 0..num_elems {
-            assert!(*sorted_vec.at(i).unwrap() == iter.next().unwrap());
+        for i in 0..NUM_ELEMS {
+            assert!(*sorted_vec.select(i).unwrap() == iter.next().unwrap());
         }
     }
 }
