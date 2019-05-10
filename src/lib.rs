@@ -1,6 +1,5 @@
 #![doc(html_root_url = "https://senderista.github.io/sorted-vec/")]
 #![doc(html_logo_url = "https://raw.githubusercontent.com/senderista/sorted-vec/master/cells.png")]
-
 #![feature(copy_within)]
 #![feature(is_sorted)]
 #![feature(iter_nth_back)]
@@ -32,7 +31,7 @@ use std::iter::{DoubleEndedIterator, ExactSizeIterator, FromIterator, FusedItera
 ///
 /// // Check for a specific one.
 /// if !ints.contains(&42) {
-///     println!("We don't have the answer to Life, the Universe, and Everything.");
+///     println!("We don't have the answer to Life, the Universe, and Everything :-(");
 /// }
 ///
 /// // Remove an integer.
@@ -170,7 +169,7 @@ where
     pub fn rank(&self, value: &T) -> Result<usize, usize> {
         let (real_index, exists) = match self.find_real_index(value) {
             Ok(index) => (index, true),
-            Err(index) => (index, false)
+            Err(index) => (index, false),
         };
         if real_index == self.data.len() {
             return Err(real_index);
@@ -408,14 +407,14 @@ where
             } else {
                 pivot_offset - 1
             };
-            let mut prev_max_offset;
             // this logic is best understood with a diagram of a rotated array, e.g.:
             //
             // ------------------------------------------------------------------------
             // | 12 | 13 | 14 | 15 | 16 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 |
             // ------------------------------------------------------------------------
             //
-            if max_offset < pivot_offset && remove_offset >= pivot_offset {
+            let mut prev_max_offset = if max_offset < pivot_offset && remove_offset >= pivot_offset
+            {
                 subarray.copy_within(pivot_offset..remove_offset, pivot_offset + 1);
                 let new_pivot_offset = if pivot_offset == subarray.len() - 1 {
                     0
@@ -424,14 +423,14 @@ where
                 };
                 self.min_indexes[subarray_idx] = new_pivot_offset;
                 self.min_data[subarray_idx] = subarray[new_pivot_offset];
-                prev_max_offset = pivot_offset;
+                pivot_offset
             } else {
                 subarray.copy_within(remove_offset + 1..=max_offset, remove_offset);
                 if remove_offset == pivot_offset {
                     self.min_data[subarray_idx] = subarray[pivot_offset];
                 }
-                prev_max_offset = max_offset;
-            }
+                max_offset
+            };
             let next_subarray_idx = min(max_subarray_idx, subarray_idx + 1);
             // now perform an "easy exchange" in all remaining subarrays except the last,
             // setting the max of each to the min of its successor.
@@ -681,13 +680,13 @@ where
                     (_, Ok(idx)) => Ok(subarray_pivot + idx),
                     // if right insertion point is past right subarray, and left subarray is not empty, then true insertion point must be on left
                     (Err(left_idx), Err(right_idx))
-                        if right_idx == right.len() && left.len() > 0 =>
+                        if right_idx == right.len() && !left.is_empty() =>
                     {
                         Err(subarray_offset + left_idx)
                     }
                     // if right insertion point is within right subarray, or left subarray is empty, then true insertion point must be on right
                     (Err(_left_idx), Err(right_idx))
-                        if right_idx < right.len() || left.len() == 0 =>
+                        if right_idx < right.len() || left.is_empty() =>
                     {
                         Err(subarray_pivot + right_idx)
                     }
@@ -699,22 +698,26 @@ where
 
     #[inline(always)]
     fn assert_invariants(&self) -> bool {
+        // assert order
         assert!(self.min_data.iter().is_sorted());
         let mut min_data_dedup = self.min_data.clone();
         min_data_dedup.dedup();
+        // assert uniqueness
         assert!(self.min_data[..] == min_data_dedup[..]);
+        // assert index of each subarray's minimum lies within the subarray
         assert!(self
             .min_indexes
             .iter()
             .enumerate()
             .all(|(idx, &offset)| offset <= idx));
+        // assert min_data is properly synchronized with min_indexes and self.data
         assert!(self
             .min_indexes
             .iter()
             .enumerate()
             .all(|(idx, &offset)| self.min_data[idx]
                 == self.data[Self::get_array_idx_from_subarray_idx(idx) + offset]));
-        // verify that min_indexes holds the index of the actual minimum of each subarray
+        // assert min_indexes holds the index of the actual minimum of each subarray
         for i in 0..self.min_indexes.len() {
             let subarray_begin_idx = Self::get_array_idx_from_subarray_idx(i);
             let subarray_end_idx = min(
@@ -959,8 +962,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::prelude::*;
     use rand::distributions::Standard;
+    use rand::prelude::*;
     use rand::rngs::SmallRng;
 
     const NUM_ELEMS: usize = 1 << 10;
