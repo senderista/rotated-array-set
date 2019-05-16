@@ -53,7 +53,7 @@ pub struct SortedVec<T> {
 ///
 /// This `struct` is created by the [`iter`] method on [`SortedVec`][`SortedVec`].
 /// See its documentation for more.
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct Iter<'a, T: 'a> {
     container: &'a SortedVec<T>,
     next_index: usize,
@@ -67,7 +67,7 @@ pub struct Iter<'a, T: 'a> {
 ///
 /// [`SortedVec`]: struct.SortedVec.html
 /// [`into_iter`]: struct.SortedVec.html#method.into_iter
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct IntoIter<T> {
     vec: Vec<T>,
     next_index: usize,
@@ -821,7 +821,7 @@ where
         if self.next_rev_index < self.next_index {
             None
         } else {
-            let nth = self.container.select(self.next_index);
+            let nth = self.container.select(self.next_rev_index);
             self.next_rev_index -= 1;
             nth
         }
@@ -1028,5 +1028,30 @@ mod tests {
         for i in 0..NUM_ELEMS {
             assert!(*sorted_vec.select(i).unwrap() == iter.next().unwrap());
         }
+    }
+
+    #[test]
+    fn test_iter_overrides() {
+        let sorted_vec: SortedVec<_> = (0usize..NUM_ELEMS).collect();
+        let iter = sorted_vec.iter();
+        assert!(*iter.min().unwrap() == *sorted_vec.select(0).unwrap());
+        assert!(*iter.max().unwrap() == *sorted_vec.select(NUM_ELEMS - 1).unwrap());
+        assert!(*iter.last().unwrap() == *sorted_vec.select(NUM_ELEMS - 1).unwrap());
+        assert!(iter.count() == sorted_vec.len());
+        assert!(*iter.last().unwrap() == *sorted_vec.select(NUM_ELEMS - 1).unwrap());
+        let step = NUM_ELEMS / 10;
+        let mut iter_nth = iter;
+        assert!(*iter_nth.nth(step - 1).unwrap() == *sorted_vec.select(step - 1).unwrap());
+        assert!(*iter_nth.nth(step - 1).unwrap() == *sorted_vec.select((2 * step) - 1).unwrap());
+        let mut iter_nth_back = iter;
+        let last_index = sorted_vec.len() - 1;
+        assert!(*iter_nth_back.nth_back(step - 1).unwrap() == *sorted_vec.select(last_index - step + 1).unwrap());
+        assert!(*iter_nth_back.nth_back(step - 1).unwrap() == *sorted_vec.select(last_index - (2 * step) + 1).unwrap());
+        let mut iter_mut = sorted_vec.iter();
+        for i in 0..(NUM_ELEMS / 2) {
+            assert!(*iter_mut.next().unwrap() == *sorted_vec.select(i).unwrap());
+            assert!(*iter_mut.next_back().unwrap() == *sorted_vec.select(last_index - i).unwrap());
+        }
+        assert!(iter_mut.next().is_none());
     }
 }
