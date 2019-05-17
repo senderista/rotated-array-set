@@ -28,7 +28,7 @@ lazy_static! {
     //     }
     //     sizes
     // };
-    static ref SIZES: Vec<usize> = (10..=28).map(|i| (1 << i) + 10).collect();
+    static ref SIZES: Vec<usize> = (10..=27).map(|i| (1 << i) + 10).collect();
 }
 
 fn find(c: &mut Criterion) {
@@ -195,5 +195,6 @@ fn remove(c: &mut Criterion) {
     );
 }
 
-criterion_group!(benches, find, insert, remove);
+// criterion_group!(benches, find, insert, remove);
+criterion_group!(benches, remove);
 criterion_main!(benches);
