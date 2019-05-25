@@ -97,6 +97,38 @@ where
         }
     }
 
+    /// Constructs a new, empty `SortedVec<T>` with the specified capacity.
+    ///
+    /// The set will be able to hold exactly `capacity` elements without
+    /// reallocating. If `capacity` is 0, the set will not allocate.
+    ///
+    /// It is important to note that although the returned set has the
+    /// *capacity* specified, the set will have a zero *length*.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut set = SortedVec::with_capacity(10);
+    ///
+    /// // The set contains no items, even though it has capacity for more
+    /// assert_eq!(set.len(), 0);
+    ///
+    /// // These are all done without reallocating...
+    /// for i in 0..10 {
+    ///     set.insert(i);
+    /// }
+    ///
+    /// // ...but this may make the vector reallocate
+    /// set.insert(11);
+    /// ```
+    pub fn with_capacity(capacity: usize) -> SortedVec<T> {
+        SortedVec {
+            data: Vec::with_capacity(capacity),
+            min_indexes: Vec::new(),
+            min_data: Vec::new(),
+        }
+    }
+
     /// Clears the set, removing all values.
     ///
     /// This is a constant-time operation.
