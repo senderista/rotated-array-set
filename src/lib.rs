@@ -1038,7 +1038,6 @@ mod tests {
         assert!(*iter.max().unwrap() == *sorted_vec.select(NUM_ELEMS - 1).unwrap());
         assert!(*iter.last().unwrap() == *sorted_vec.select(NUM_ELEMS - 1).unwrap());
         assert!(iter.count() == sorted_vec.len());
-        assert!(*iter.last().unwrap() == *sorted_vec.select(NUM_ELEMS - 1).unwrap());
         let step = NUM_ELEMS / 10;
         let mut iter_nth = iter;
         assert!(*iter_nth.nth(step - 1).unwrap() == *sorted_vec.select(step - 1).unwrap());
