@@ -118,7 +118,7 @@ where
     ///     set.insert(i);
     /// }
     ///
-    /// // ...but this may make the vector reallocate
+    /// // ...but this may make the set reallocate
     /// set.insert(11);
     /// ```
     pub fn with_capacity(capacity: usize) -> SortedVec<T> {
