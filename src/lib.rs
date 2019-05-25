@@ -7,6 +7,7 @@
 
 use std::cmp::min;
 use std::fmt::Debug;
+use std::hash::{Hash, Hasher};
 use std::iter::{DoubleEndedIterator, ExactSizeIterator, FromIterator, FusedIterator};
 
 /// A set based on a 2-level rotated array.
@@ -777,6 +778,17 @@ where
         for subarray_idx in 0..=last_subarray_idx {
             let subarray_offset = Self::get_array_idx_from_subarray_idx(subarray_idx);
             self.min_data.push(self.data[subarray_offset]);
+        }
+    }
+}
+
+impl<T> Hash for SortedVec<T>
+where
+    T: Ord + Copy + Default + Debug + Hash
+{
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        for i in 0..self.len() {
+            self.select(i).hash(state);
         }
     }
 }
