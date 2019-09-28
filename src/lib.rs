@@ -1,14 +1,12 @@
 #![doc(html_root_url = "https://senderista.github.io/sorted-vec/")]
 #![doc(html_logo_url = "https://raw.githubusercontent.com/senderista/sorted-vec/master/cells.png")]
-#![feature(copy_within)]
-#![feature(is_sorted)]
-#![feature(iter_nth_back)]
-#![feature(const_int_conversion)]
 
 use std::cmp::min;
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 use std::iter::{DoubleEndedIterator, ExactSizeIterator, FromIterator, FusedIterator};
+// remove when Iterator::is_sorted is stabilized
+use is_sorted::IsSorted;
 
 /// A set based on a 2-level rotated array.
 ///
@@ -109,6 +107,8 @@ where
     /// # Examples
     ///
     /// ```
+    /// use sorted_vec::SortedVec;
+    ///
     /// let mut set = SortedVec::with_capacity(10);
     ///
     /// // The set contains no items, even though it has capacity for more
@@ -123,10 +123,15 @@ where
     /// set.insert(11);
     /// ```
     pub fn with_capacity(capacity: usize) -> SortedVec<T> {
+        let min_indexes_capacity = if capacity > 0 {
+            Self::get_subarray_idx_from_array_idx(capacity - 1) + 1
+        } else {
+            0
+        };
         SortedVec {
             data: Vec::with_capacity(capacity),
-            min_indexes: Vec::new(),
-            min_data: Vec::new(),
+            min_indexes: Vec::with_capacity(min_indexes_capacity),
+            min_data: Vec::with_capacity(min_indexes_capacity),
         }
     }
 
@@ -480,7 +485,7 @@ where
                 // coincides with its min offset, i.e., when it is subarray 0
                 if cur_subarray_idx == 1 {
                     self.min_data[0] = self.data[0];
-                    debug_assert!(self.min_data.iter().is_sorted());
+                    debug_assert!(IsSorted::is_sorted(&mut self.min_data.iter()));
                 }
                 prev_max_offset = *pivot_offset_ref;
                 let new_min_offset = if *pivot_offset_ref == cur_subarray_idx {
@@ -490,7 +495,7 @@ where
                 };
                 *pivot_offset_ref = new_min_offset;
                 self.min_data[cur_subarray_idx] = self.data[cur_subarray_offset + new_min_offset];
-                debug_assert!(self.min_data.iter().is_sorted());
+                debug_assert!(IsSorted::is_sorted(&mut self.min_data.iter()));
             }
             // now we fix up the last subarray. if it was initially full, we need to sort it to maintain the insert invariant.
             // if the removed element is in the last subarray, we just sort and remove() on the vec, updating auxiliary arrays.
@@ -504,7 +509,7 @@ where
             // coincides with its min offset, i.e., when it is subarray 0
             if max_subarray_idx == 1 {
                 self.min_data[0] = self.data[0];
-                debug_assert!(self.min_data.iter().is_sorted());
+                debug_assert!(IsSorted::is_sorted(&mut self.min_data.iter()));
             }
         }
         self.data.remove(max_subarray_remove_idx);
@@ -515,7 +520,7 @@ where
         } else {
             // since the last subarray is always sorted, its minimum is always on the first offset
             self.min_data[max_subarray_idx] = self.data[max_subarray_offset];
-            debug_assert!(self.min_data.iter().is_sorted());
+            debug_assert!(IsSorted::is_sorted(&mut self.min_data.iter()));
         }
         debug_assert!(self.find_real_index(&value).is_err());
         debug_assert!(self.assert_invariants());
@@ -707,7 +712,7 @@ where
                 let pivot_offset = self.min_indexes[subarray_idx];
                 let subarray_pivot = subarray_offset + pivot_offset;
                 let (left, right) = subarray.split_at(pivot_offset);
-                debug_assert!(left.iter().is_sorted() && right.iter().is_sorted());
+                debug_assert!(IsSorted::is_sorted(&mut left.iter()) && IsSorted::is_sorted(&mut right.iter()));
                 match (left.binary_search(value), right.binary_search(value)) {
                     (Ok(idx), _) => Ok(subarray_offset + idx),
                     (_, Ok(idx)) => Ok(subarray_pivot + idx),
@@ -732,7 +737,7 @@ where
     #[inline(always)]
     fn assert_invariants(&self) -> bool {
         // assert order
-        assert!(self.min_data.iter().is_sorted());
+        assert!(IsSorted::is_sorted(&mut self.min_data.iter()));
         let mut min_data_dedup = self.min_data.clone();
         min_data_dedup.dedup();
         // assert uniqueness
@@ -771,20 +776,44 @@ where
 
     // given data array, initialize auxiliary arrays
     fn init(&mut self) {
-        debug_assert!(!self.data.is_empty());
-        self.data.sort_unstable(); // don't want to allocate
-        let last_subarray_idx = Self::get_subarray_idx_from_array_idx(self.data.len() - 1);
-        self.min_indexes = vec![0; last_subarray_idx + 1];
-        for subarray_idx in 0..=last_subarray_idx {
-            let subarray_offset = Self::get_array_idx_from_subarray_idx(subarray_idx);
-            self.min_data.push(self.data[subarray_offset]);
+        debug_assert!(self.min_indexes.is_empty() && self.min_data.is_empty());
+        if !self.data.is_empty() {
+            self.data.sort_unstable(); // don't want to allocate
+            let last_subarray_idx = Self::get_subarray_idx_from_array_idx(self.data.len() - 1);
+            self.min_indexes = vec![0; last_subarray_idx + 1];
+            for subarray_idx in 0..=last_subarray_idx {
+                let subarray_offset = Self::get_array_idx_from_subarray_idx(subarray_idx);
+                self.min_data.push(self.data[subarray_offset]);
+            }
         }
     }
 }
 
+impl<T> PartialEq for SortedVec<T>
+where
+    T: Ord + Copy + Default + Debug,
+{
+    fn eq(&self, other: &Self) -> bool {
+        if self.len() != other.len() {
+            return false;
+        }
+        for i in 0..self.len() {
+            if self.select(i).unwrap() != other.select(i).unwrap() {
+                return false;
+            }
+        }
+        true
+    }
+}
+
+impl<T> Eq for SortedVec<T>
+where
+    T: Ord + Copy + Default + Debug,
+{}
+
 impl<T> Hash for SortedVec<T>
 where
-    T: Ord + Copy + Default + Debug + Hash
+    T: Ord + Copy + Default + Debug + Hash,
 {
     fn hash<H: Hasher>(&self, state: &mut H) {
         for i in 0..self.len() {
@@ -799,7 +828,7 @@ where
 {
     type Item = &'a T;
 
-    fn next(&mut self) -> Option<&'a T> {
+    fn next(&mut self) -> Option<Self::Item> {
         if self.next_index > self.next_rev_index {
             None
         } else {
@@ -836,9 +865,10 @@ where
         self.container.select(0)
     }
 
-    fn is_sorted(self) -> bool {
-        true
-    }
+    // FIXME: uncomment when Iterator::is_sorted is stabilized 
+    // fn is_sorted(self) -> bool {
+    //     true
+    // }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         let remaining_count = self.container.data.len() - self.next_index;
@@ -850,7 +880,7 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T>
 where
     T: Ord + Copy + Default + Debug,
 {
-    fn next_back(&mut self) -> Option<&'a T> {
+    fn next_back(&mut self) -> Option<Self::Item> {
         if self.next_rev_index < self.next_index {
             None
         } else {
@@ -890,7 +920,7 @@ where
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
-    fn into_iter(self) -> Iter<'a, T> {
+    fn into_iter(self) -> Self::IntoIter {
         self.iter()
     }
 }
@@ -933,7 +963,7 @@ where
 {
     fn from(slice: &[T]) -> Self {
         let mut this = SortedVec {
-            data: slice.to_owned(),
+            data: slice.to_vec(),
             min_indexes: Vec::new(),
             min_data: Vec::new(),
         };
@@ -975,6 +1005,7 @@ where
             // sort subarray in-place
             subarray.rotate_left(pivot_offset);
         }
+        // steal data array
         self.data
     }
 }
@@ -1011,17 +1042,20 @@ mod tests {
     use rand::rngs::SmallRng;
 
     const NUM_ELEMS: usize = 1 << 10;
-    const SEED: u64 = u64::from_be_bytes(*b"cafebabe");
+    // only works on nightly, uncomment when from_be_bytes is stabilized as a const fn
+    // const SEED: u64 = u64::from_be_bytes(*b"cafebabe");
 
     #[test]
     fn insert_remove() {
-        let mut rng: SmallRng = SeedableRng::seed_from_u64(SEED);
+        // FIXME: remove when const fns are in stable
+        let seed: u64 = u64::from_be_bytes(*b"cafebabe");
+        let mut rng: SmallRng = SeedableRng::seed_from_u64(seed);
         let iter = rng.sample_iter(&Standard).take(NUM_ELEMS);
         let mut sorted_vec: SortedVec<usize> = SortedVec::new();
         for v in iter {
             assert!(sorted_vec.insert(v));
         }
-        let mut rng: SmallRng = SeedableRng::seed_from_u64(SEED);
+        let mut rng: SmallRng = SeedableRng::seed_from_u64(seed);
         let iter = rng.sample_iter(&Standard).take(NUM_ELEMS);
         for v in iter {
             assert!(sorted_vec.remove(&v));
@@ -1031,13 +1065,15 @@ mod tests {
 
     #[test]
     fn rank_select() {
-        let mut rng: SmallRng = SeedableRng::seed_from_u64(SEED);
+        // FIXME: remove when const fns are in stable
+        let seed: u64 = u64::from_be_bytes(*b"cafebabe");
+        let mut rng: SmallRng = SeedableRng::seed_from_u64(seed);
         let iter = rng.sample_iter(&Standard).take(NUM_ELEMS);
         let mut sorted_vec: SortedVec<usize> = SortedVec::new();
         for v in iter {
             assert!(sorted_vec.insert(v));
         }
-        let mut rng: SmallRng = SeedableRng::seed_from_u64(SEED);
+        let mut rng: SmallRng = SeedableRng::seed_from_u64(seed);
         let iter = rng.sample_iter(&Standard).take(NUM_ELEMS);
         for v1 in iter {
             let p = sorted_vec.rank(&v1).unwrap();
@@ -1048,7 +1084,9 @@ mod tests {
 
     #[test]
     fn compare_iter() {
-        let mut rng: SmallRng = SeedableRng::seed_from_u64(SEED);
+        // FIXME: remove when const fns are in stable
+        let seed: u64 = u64::from_be_bytes(*b"cafebabe");
+        let mut rng: SmallRng = SeedableRng::seed_from_u64(seed);
         let iter = rng.sample_iter(&Standard).take(NUM_ELEMS);
         let mut sorted_vec: SortedVec<usize> = SortedVec::new();
         for v in iter {
@@ -1062,7 +1100,9 @@ mod tests {
 
     #[test]
     fn compare_into_iter() {
-        let mut rng: SmallRng = SeedableRng::seed_from_u64(SEED);
+        // FIXME: remove when const fns are in stable
+        let seed: u64 = u64::from_be_bytes(*b"cafebabe");
+        let mut rng: SmallRng = SeedableRng::seed_from_u64(seed);
         let iter = rng.sample_iter(&Standard).take(NUM_ELEMS as usize);
         let mut sorted_vec: SortedVec<usize> = SortedVec::new();
         for v in iter {
