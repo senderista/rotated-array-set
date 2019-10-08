@@ -1,10 +1,13 @@
 #![doc(html_root_url = "https://senderista.github.io/sorted-vec/")]
 #![doc(html_logo_url = "https://raw.githubusercontent.com/senderista/sorted-vec/master/cells.png")]
 
-use std::cmp::min;
+use std::cmp::Ordering::{self, Equal, Greater, Less};
+use std::cmp::{max, min};
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
-use std::iter::{DoubleEndedIterator, ExactSizeIterator, FromIterator, FusedIterator};
+use std::iter::{DoubleEndedIterator, ExactSizeIterator, FromIterator, FusedIterator, Peekable};
+use std::ops::Bound::{Excluded, Included, Unbounded};
+use std::ops::RangeBounds;
 // remove when Iterator::is_sorted is stabilized
 use is_sorted::IsSorted;
 
@@ -48,15 +51,68 @@ pub struct SortedVec<T> {
     min_data: Vec<T>,
 }
 
+// Internal encapsulation of container + bounds
+#[derive(Debug, Copy, Clone)]
+struct Range<'a, T: 'a> {
+    container: &'a SortedVec<T>,
+    start_index_inclusive: usize,
+    end_index_exclusive: usize,
+}
+
+impl<'a, T> Range<'a, T>
+where
+    T: Ord + Copy + Default + Debug,
+{
+    fn with_bounds(
+        container: &'a SortedVec<T>,
+        start_index_inclusive: usize,
+        end_index_exclusive: usize,
+    ) -> Range<'a, T> {
+        assert!(end_index_exclusive >= start_index_inclusive);
+        assert!(end_index_exclusive <= container.len());
+        Range {
+            container,
+            start_index_inclusive,
+            end_index_exclusive,
+        }
+    }
+
+    fn new(container: &'a SortedVec<T>) -> Range<'a, T> {
+        Range::with_bounds(container, 0, container.len())
+    }
+
+    fn at(&self, index: usize) -> Option<&'a T> {
+        let container_idx = index + self.start_index_inclusive;
+        self.container.select(container_idx)
+    }
+
+    fn len(&self) -> usize {
+        self.end_index_exclusive - self.start_index_inclusive
+    }
+}
+
 /// An iterator over the items of a `SortedVec`.
 ///
 /// This `struct` is created by the [`iter`] method on [`SortedVec`][`SortedVec`].
 /// See its documentation for more.
 #[derive(Debug, Copy, Clone)]
 pub struct Iter<'a, T: 'a> {
-    container: &'a SortedVec<T>,
+    range: Range<'a, T>,
     next_index: usize,
     next_rev_index: usize,
+}
+
+impl<'a, T> Iter<'a, T>
+where
+    T: Ord + Copy + Default + Debug,
+{
+    fn new(range: Range<'a, T>) -> Iter<'a, T> {
+        Iter {
+            range,
+            next_index: 0,
+            next_rev_index: range.len() - 1,
+        }
+    }
 }
 
 /// An owning iterator over the items of a `SortedVec`.
@@ -70,6 +126,64 @@ pub struct Iter<'a, T: 'a> {
 pub struct IntoIter<T> {
     vec: Vec<T>,
     next_index: usize,
+}
+
+/// A lazy iterator producing elements in the difference of `SortedVec`s.
+///
+/// This `struct` is created by the [`difference`] method on [`SortedVec`].
+/// See its documentation for more.
+///
+/// [`SortedVec`]: struct.SortedVec.html
+/// [`difference`]: struct.SortedVec.html#method.difference
+#[derive(Debug, Clone)]
+pub struct Difference<'a, T: 'a> {
+    self_iter: Iter<'a, T>,
+    other_set: &'a SortedVec<T>,
+}
+
+/// A lazy iterator producing elements in the symmetric difference of `SortedVec`s.
+///
+/// This `struct` is created by the [`symmetric_difference`] method on
+/// [`SortedVec`]. See its documentation for more.
+///
+/// [`SortedVec`]: struct.SortedVec.html
+/// [`symmetric_difference`]: struct.SortedVec.html#method.symmetric_difference
+#[derive(Debug, Clone)]
+pub struct SymmetricDifference<'a, T: 'a>
+where
+    T: Ord + Copy + Default + Debug,
+{
+    a: Peekable<Iter<'a, T>>,
+    b: Peekable<Iter<'a, T>>,
+}
+
+/// A lazy iterator producing elements in the intersection of `SortedVec`s.
+///
+/// This `struct` is created by the [`intersection`] method on [`SortedVec`].
+/// See its documentation for more.
+///
+/// [`SortedVec`]: struct.SortedVec.html
+/// [`intersection`]: struct.SortedVec.html#method.intersection
+#[derive(Debug, Clone)]
+pub struct Intersection<'a, T: 'a> {
+    small_iter: Iter<'a, T>,
+    large_set: &'a SortedVec<T>,
+}
+
+/// A lazy iterator producing elements in the union of `SortedVec`s.
+///
+/// This `struct` is created by the [`union`] method on [`SortedVec`].
+/// See its documentation for more.
+///
+/// [`SortedVec`]: struct.SortedVec.html
+/// [`union`]: struct.SortedVec.html#method.union
+#[derive(Debug, Clone)]
+pub struct Union<'a, T: 'a>
+where
+    T: Ord + Copy + Default + Debug,
+{
+    a: Peekable<Iter<'a, T>>,
+    b: Peekable<Iter<'a, T>>,
 }
 
 impl<T> SortedVec<T>
@@ -186,8 +300,8 @@ where
     /// assert_eq!(set.get(&4), None);
     /// ```
     pub fn get(&self, value: &T) -> Option<&T> {
-        let real_idx = self.find_real_index(value).ok()?;
-        Some(&self.data[real_idx])
+        let raw_idx = self.find_raw_index(value).ok()?;
+        Some(&self.data[raw_idx])
     }
 
     ///
@@ -205,15 +319,15 @@ where
     /// assert_eq!(set.rank(&4), Err(3));
     /// ```
     pub fn rank(&self, value: &T) -> Result<usize, usize> {
-        let (real_index, exists) = match self.find_real_index(value) {
+        let (raw_index, exists) = match self.find_raw_index(value) {
             Ok(index) => (index, true),
             Err(index) => (index, false),
         };
-        if real_index == self.data.len() {
-            return Err(real_index);
+        if raw_index == self.data.len() {
+            return Err(raw_index);
         }
-        debug_assert!(real_index < self.data.len());
-        let subarray_idx = Self::get_subarray_idx_from_array_idx(real_index);
+        debug_assert!(raw_index < self.data.len());
+        let subarray_idx = Self::get_subarray_idx_from_array_idx(raw_index);
         let subarray_start_idx = Self::get_array_idx_from_subarray_idx(subarray_idx);
         let subarray_len = if subarray_idx == self.min_indexes.len() - 1 {
             self.data.len() - subarray_start_idx
@@ -221,10 +335,10 @@ where
             subarray_idx + 1
         };
         let pivot_idx = subarray_start_idx + self.min_indexes[subarray_idx];
-        let logical_index = if real_index >= pivot_idx {
-            subarray_start_idx + real_index - pivot_idx
+        let logical_index = if raw_index >= pivot_idx {
+            subarray_start_idx + raw_index - pivot_idx
         } else {
-            subarray_start_idx + subarray_len - (pivot_idx - real_index)
+            subarray_start_idx + subarray_len - (pivot_idx - raw_index)
         };
         if exists {
             Ok(logical_index)
@@ -262,8 +376,8 @@ where
         let pivot_offset = self.min_indexes[subarray_idx];
         let rotated_offset = (pivot_offset + idx_offset) % subarray_len;
         debug_assert!(rotated_offset < subarray_len);
-        let real_idx = subarray_start_idx + rotated_offset;
-        Some(&self.data[real_idx])
+        let raw_idx = subarray_start_idx + rotated_offset;
+        Some(&self.data[raw_idx])
     }
 
     /// Adds a value to the set.
@@ -287,7 +401,7 @@ where
     /// assert_eq!(set.len(), 1);
     /// ```
     pub fn insert(&mut self, value: T) -> bool {
-        let insert_idx = match self.find_real_index(&value).err() {
+        let insert_idx = match self.find_raw_index(&value).err() {
             None => return false,
             Some(idx) => idx,
         };
@@ -380,7 +494,7 @@ where
             self.data.insert(max_subarray_offset, prev_max);
             self.min_data[max_subarray_idx] = prev_max;
         }
-        debug_assert!(self.find_real_index(&value).is_ok());
+        debug_assert!(self.find_raw_index(&value).is_ok());
         debug_assert!(self.assert_invariants());
         true
     }
@@ -402,7 +516,7 @@ where
     /// assert_eq!(set.remove(&2), false);
     /// ```
     pub fn remove(&mut self, value: &T) -> bool {
-        let mut remove_idx = match self.find_real_index(&value).ok() {
+        let mut remove_idx = match self.find_raw_index(&value).ok() {
             Some(idx) => idx,
             None => return false,
         };
@@ -428,7 +542,7 @@ where
             // the remove index might change after sorting the last subarray
             if subarray_idx == max_subarray_idx {
                 remove_idx = self
-                    .find_real_index(&value)
+                    .find_raw_index(&value)
                     .expect("recalculating remove index after sorting");
                 max_subarray_remove_idx = remove_idx;
             }
@@ -522,7 +636,7 @@ where
             self.min_data[max_subarray_idx] = self.data[max_subarray_offset];
             debug_assert!(IsSorted::is_sorted(&mut self.min_data.iter()));
         }
-        debug_assert!(self.find_real_index(&value).is_err());
+        debug_assert!(self.find_raw_index(&value).is_err());
         debug_assert!(self.assert_invariants());
         true
     }
@@ -584,7 +698,7 @@ where
         self.data.is_empty()
     }
 
-    /// Gets an iterator that visits the values in the `SortedVec` in ascending order.
+    /// Gets a double-ended iterator that visits the values in the `SortedVec` in ascending (descending) order.
     ///
     /// # Examples
     ///
@@ -611,11 +725,206 @@ where
     /// assert_eq!(set_iter.next(), Some(&3));
     /// assert_eq!(set_iter.next(), None);
     /// ```
-    pub fn iter(&self) -> Iter<T> {
-        Iter {
-            container: self,
-            next_index: 0,
-            next_rev_index: self.len() - 1,
+    pub fn iter(&self) -> Iter<'_, T> {
+        Iter::new(Range::new(self))
+    }
+
+    /// Constructs a double-ended iterator over a sub-range of elements in the set.
+    /// The simplest way is to use the range syntax `min..max`, thus `range(min..max)` will
+    /// yield elements from min (inclusive) to max (exclusive).
+    /// The range may also be entered as `(Bound<T>, Bound<T>)`, so for example
+    /// `range((Excluded(4), Included(10)))` will yield a left-exclusive, right-inclusive
+    /// range from 4 to 10.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sorted_vec::SortedVec;
+    /// use std::ops::Bound::Included;
+    ///
+    /// let mut set = SortedVec::new();
+    /// set.insert(3);
+    /// set.insert(5);
+    /// set.insert(8);
+    /// for &elem in set.range((Included(&4), Included(&8))) {
+    ///     println!("{}", elem);
+    /// }
+    /// assert_eq!(Some(&5), set.range(4..).next());
+    /// ```
+    ///
+    /// ```
+    /// use sorted_vec::SortedVec;
+    /// use std::ops::Bound::{Included, Excluded};
+    ///
+    /// let mut set: SortedVec<_> = (1..10).collect();
+    /// let range: Vec<_> = set.range((Included(&4), Excluded(&8))).cloned().collect();
+    /// assert_eq!(range, vec![4, 5, 6, 7]);
+    /// ```
+    pub fn range<R>(&self, range: R) -> Iter<'_, T>
+    where
+        R: RangeBounds<T>,
+    {
+        let range = self.get_range(range);
+        Iter::new(range)
+    }
+
+    fn get_range<R>(&self, range: R) -> Range<'_, T>
+    where
+        R: RangeBounds<T>,
+    {
+        match (range.start_bound(), range.end_bound()) {
+            (Excluded(s), Excluded(e)) if s == e => {
+                panic!("range start and end are equal and excluded in SortedVec")
+            }
+            (Included(s), Included(e))
+            | (Included(s), Excluded(e))
+            | (Excluded(s), Included(e))
+            | (Excluded(s), Excluded(e))
+                if s > e =>
+            {
+                panic!("range start is greater than range end in SortedVec")
+            }
+            _ => {}
+        };
+        let start_index_inclusive = match range.start_bound() {
+            Unbounded => 0,
+            Included(s) => match self.find_raw_index(s) {
+                Ok(index) => index,
+                Err(index) => index,
+            },
+            Excluded(s) => match self.find_raw_index(s) {
+                Ok(index) => index + 1,
+                Err(index) => index,
+            },
+        };
+        let end_index_exclusive = match range.end_bound() {
+            Unbounded => self.len(),
+            Included(e) => match self.find_raw_index(e) {
+                Ok(index) => index + 1,
+                Err(index) => index,
+            },
+            Excluded(e) => match self.find_raw_index(e) {
+                Ok(index) => index,
+                Err(index) => index,
+            },
+        };
+        Range::with_bounds(self, start_index_inclusive, end_index_exclusive)
+    }
+
+    /// Visits the values representing the difference,
+    /// i.e., the values that are in `self` but not in `other`,
+    /// in ascending order.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sorted_vec::SortedVec;
+    ///
+    /// let mut a = SortedVec::new();
+    /// a.insert(1);
+    /// a.insert(2);
+    ///
+    /// let mut b = SortedVec::new();
+    /// b.insert(2);
+    /// b.insert(3);
+    ///
+    /// let diff: Vec<_> = a.difference(&b).cloned().collect();
+    /// assert_eq!(diff, [1]);
+    /// ```
+    pub fn difference<'a>(&'a self, other: &'a SortedVec<T>) -> Difference<'a, T> {
+        Difference {
+            self_iter: self.iter(),
+            other_set: other,
+        }
+    }
+
+    /// Visits the values representing the symmetric difference,
+    /// i.e., the values that are in `self` or in `other` but not in both,
+    /// in ascending order.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sorted_vec::SortedVec;
+    ///
+    /// let mut a = SortedVec::new();
+    /// a.insert(1);
+    /// a.insert(2);
+    ///
+    /// let mut b = SortedVec::new();
+    /// b.insert(2);
+    /// b.insert(3);
+    ///
+    /// let sym_diff: Vec<_> = a.symmetric_difference(&b).cloned().collect();
+    /// assert_eq!(sym_diff, [1, 3]);
+    /// ```
+    pub fn symmetric_difference<'a>(
+        &'a self,
+        other: &'a SortedVec<T>,
+    ) -> SymmetricDifference<'a, T> {
+        SymmetricDifference {
+            a: self.iter().peekable(),
+            b: other.iter().peekable(),
+        }
+    }
+
+    /// Visits the values representing the intersection,
+    /// i.e., the values that are both in `self` and `other`,
+    /// in ascending order.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sorted_vec::SortedVec;
+    ///
+    /// let mut a = SortedVec::new();
+    /// a.insert(1);
+    /// a.insert(2);
+    ///
+    /// let mut b = SortedVec::new();
+    /// b.insert(2);
+    /// b.insert(3);
+    ///
+    /// let intersection: Vec<_> = a.intersection(&b).cloned().collect();
+    /// assert_eq!(intersection, [2]);
+    /// ```
+    pub fn intersection<'a>(&'a self, other: &'a SortedVec<T>) -> Intersection<'a, T> {
+        let (small, other) = if self.len() <= other.len() {
+            (self, other)
+        } else {
+            (other, self)
+        };
+        // Iterate the small set, searching for matches in the large set.
+        Intersection {
+            small_iter: small.iter(),
+            large_set: other,
+        }
+    }
+
+    /// Visits the values representing the union,
+    /// i.e., all the values in `self` or `other`, without duplicates,
+    /// in ascending order.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sorted_vec::SortedVec;
+    ///
+    /// let mut a = SortedVec::new();
+    /// a.insert(1);
+    /// a.insert(2);
+    ///
+    /// let mut b = SortedVec::new();
+    /// b.insert(2);
+    /// b.insert(3);
+    ///
+    /// let union: Vec<_> = a.union(&b).cloned().collect();
+    /// assert_eq!(union, [1, 2, 3]);
+    /// ```
+    pub fn union<'a>(&'a self, other: &'a SortedVec<T>) -> Union<'a, T> {
+        Union {
+            a: self.iter().peekable(),
+            b: other.iter().peekable(),
         }
     }
 
@@ -651,7 +960,7 @@ where
     }
 
     // Returns either (raw) index of element if it exists, or (raw) insertion point if it doesn't exist.
-    fn find_real_index(&self, value: &T) -> Result<usize, usize> {
+    fn find_raw_index(&self, value: &T) -> Result<usize, usize> {
         if self.data.is_empty() {
             return Err(0);
         }
@@ -668,6 +977,7 @@ where
             Ok(idx) => {
                 // `value` is located directly on a pivot index
                 let found_idx = Self::get_array_idx_from_subarray_idx(idx) + self.min_indexes[idx];
+                debug_assert!(found_idx < self.len());
                 Ok(found_idx)
             }
             Err(idx) => {
@@ -712,7 +1022,9 @@ where
                 let pivot_offset = self.min_indexes[subarray_idx];
                 let subarray_pivot = subarray_offset + pivot_offset;
                 let (left, right) = subarray.split_at(pivot_offset);
-                debug_assert!(IsSorted::is_sorted(&mut left.iter()) && IsSorted::is_sorted(&mut right.iter()));
+                debug_assert!(
+                    IsSorted::is_sorted(&mut left.iter()) && IsSorted::is_sorted(&mut right.iter())
+                );
                 match (left.binary_search(value), right.binary_search(value)) {
                     (Ok(idx), _) => Ok(subarray_offset + idx),
                     (_, Ok(idx)) => Ok(subarray_pivot + idx),
@@ -806,10 +1118,7 @@ where
     }
 }
 
-impl<T> Eq for SortedVec<T>
-where
-    T: Ord + Copy + Default + Debug,
-{}
+impl<T> Eq for SortedVec<T> where T: Ord + Copy + Default + Debug {}
 
 impl<T> Hash for SortedVec<T>
 where
@@ -832,7 +1141,7 @@ where
         if self.next_index > self.next_rev_index {
             None
         } else {
-            let current = self.container.select(self.next_index);
+            let current = self.range.at(self.next_index);
             self.next_index += 1;
             current
         }
@@ -843,35 +1152,35 @@ where
         if self.next_index > self.next_rev_index {
             None
         } else {
-            let nth = self.container.select(self.next_index);
+            let nth = self.range.at(self.next_index);
             self.next_index += 1;
             nth
         }
     }
 
     fn count(self) -> usize {
-        self.container.data.len() - self.next_index
+        self.len() - self.next_index
     }
 
     fn last(self) -> Option<Self::Item> {
-        self.container.select(self.container.data.len() - 1)
+        self.range.at(self.len() - 1)
     }
 
     fn max(self) -> Option<Self::Item> {
-        self.container.select(self.len() - 1)
+        self.range.at(self.len() - 1)
     }
 
     fn min(self) -> Option<Self::Item> {
-        self.container.select(0)
+        self.range.at(0)
     }
 
-    // FIXME: uncomment when Iterator::is_sorted is stabilized 
+    // FIXME: uncomment when Iterator::is_sorted is stabilized
     // fn is_sorted(self) -> bool {
     //     true
     // }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let remaining_count = self.container.data.len() - self.next_index;
+        let remaining_count = self.len() - self.next_index;
         (remaining_count, Some(remaining_count))
     }
 }
@@ -884,7 +1193,7 @@ where
         if self.next_rev_index < self.next_index {
             None
         } else {
-            let current = self.container.select(self.next_rev_index);
+            let current = self.range.at(self.next_rev_index);
             self.next_rev_index -= 1;
             current
         }
@@ -895,7 +1204,7 @@ where
         if self.next_rev_index < self.next_index {
             None
         } else {
-            let nth = self.container.select(self.next_rev_index);
+            let nth = self.range.at(self.next_rev_index);
             self.next_rev_index -= 1;
             nth
         }
@@ -907,7 +1216,7 @@ where
     T: Ord + Copy + Default + Debug,
 {
     fn len(&self) -> usize {
-        self.container.len()
+        self.range.len()
     }
 }
 
@@ -956,6 +1265,124 @@ where
         }
     }
 }
+
+/// From https://doc.rust-lang.org/src/alloc/collections/btree/set.rs.html
+/// Compares `x` and `y`, but return `short` if x is None and `long` if y is None
+fn cmp_opt<T: Ord>(x: Option<&T>, y: Option<&T>, short: Ordering, long: Ordering) -> Ordering {
+    match (x, y) {
+        (None, _) => short,
+        (_, None) => long,
+        (Some(x1), Some(y1)) => x1.cmp(y1),
+    }
+}
+
+impl<'a, T> Iterator for Difference<'a, T>
+where
+    T: Ord + Copy + Default + Debug,
+{
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<&'a T> {
+        // Just use a simple lookup from `self_iter` to `other_set` for now,
+        // later add a proper linear merge for size ratios close to 1 if benchmarks warrant.
+        // (A point lookup has much better worst-case performance than linear merge.)
+        // NB: For a single algorithm optimal over all size ratios, see
+        // "A simple algorithm for merging two disjoint linearly-ordered sets".
+        loop {
+            let self_next = self.self_iter.next()?;
+            if !self.other_set.contains(&self_next) {
+                return Some(self_next);
+            }
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (self_len, other_len) = (self.self_iter.len(), self.other_set.len());
+        (self_len.saturating_sub(other_len), Some(self_len))
+    }
+}
+
+impl<T> FusedIterator for Difference<'_, T> where T: Ord + Copy + Default + Debug {}
+
+impl<'a, T> Iterator for SymmetricDifference<'a, T>
+where
+    T: Ord + Copy + Default + Debug,
+{
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<&'a T> {
+        loop {
+            match cmp_opt(self.a.peek(), self.b.peek(), Greater, Less) {
+                Less => return self.a.next(),
+                Equal => {
+                    self.a.next();
+                    self.b.next();
+                }
+                Greater => return self.b.next(),
+            }
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, Some(self.a.len() + self.b.len()))
+    }
+}
+
+impl<T> FusedIterator for SymmetricDifference<'_, T> where T: Ord + Copy + Default + Debug {}
+
+impl<'a, T> Iterator for Intersection<'a, T>
+where
+    T: Ord + Copy + Default + Debug,
+{
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<&'a T> {
+        // Just use a simple lookup from `self_iter` to `other_set` for now,
+        // later add a proper linear merge for size ratios close to 1 if benchmarks warrant.
+        // (A point lookup has much better worst-case performance than linear merge.)
+        // NB: For a single algorithm optimal over all size ratios, see
+        // "A simple algorithm for merging two disjoint linearly-ordered sets".
+        loop {
+            let small_next = self.small_iter.next()?;
+            if self.large_set.contains(&small_next) {
+                return Some(small_next);
+            }
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let min_len = self.small_iter.len();
+        (0, Some(min_len))
+    }
+}
+
+impl<T> FusedIterator for Intersection<'_, T> where T: Ord + Copy + Default + Debug {}
+
+impl<'a, T: Ord> Iterator for Union<'a, T>
+where
+    T: Ord + Copy + Default + Debug,
+{
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<&'a T> {
+        match cmp_opt(self.a.peek(), self.b.peek(), Greater, Less) {
+            Less => self.a.next(),
+            Equal => {
+                self.b.next();
+                self.a.next()
+            }
+            Greater => self.b.next(),
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let a_len = self.a.len();
+        let b_len = self.b.len();
+        (max(a_len, b_len), Some(a_len + b_len))
+    }
+}
+
+impl<T> FusedIterator for Union<'_, T> where T: Ord + Copy + Default + Debug {}
 
 impl<'a, T> From<&'a [T]> for SortedVec<T>
 where
@@ -1128,8 +1555,14 @@ mod tests {
         assert!(*iter_nth.nth(step - 1).unwrap() == *sorted_vec.select((2 * step) - 1).unwrap());
         let mut iter_nth_back = iter;
         let last_index = sorted_vec.len() - 1;
-        assert!(*iter_nth_back.nth_back(step - 1).unwrap() == *sorted_vec.select(last_index - step + 1).unwrap());
-        assert!(*iter_nth_back.nth_back(step - 1).unwrap() == *sorted_vec.select(last_index - (2 * step) + 1).unwrap());
+        assert!(
+            *iter_nth_back.nth_back(step - 1).unwrap()
+                == *sorted_vec.select(last_index - step + 1).unwrap()
+        );
+        assert!(
+            *iter_nth_back.nth_back(step - 1).unwrap()
+                == *sorted_vec.select(last_index - (2 * step) + 1).unwrap()
+        );
         let mut iter_mut = sorted_vec.iter();
         for i in 0..(NUM_ELEMS / 2) {
             assert!(*iter_mut.next().unwrap() == *sorted_vec.select(i).unwrap());
