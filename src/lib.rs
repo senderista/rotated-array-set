@@ -6,6 +6,7 @@ use std::cmp::{max, min};
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 use std::iter::{DoubleEndedIterator, ExactSizeIterator, FromIterator, FusedIterator, Peekable};
+use std::mem;
 use std::ops::Bound::{Excluded, Included, Unbounded};
 use std::ops::RangeBounds;
 // remove when Iterator::is_sorted is stabilized
@@ -107,10 +108,12 @@ where
     T: Ord + Copy + Default + Debug,
 {
     fn new(range: Range<'a, T>) -> Iter<'a, T> {
+        let next_index = 0;
+        let next_rev_index = if range.len() == 0 { 0 } else { range.len() - 1 };
         Iter {
             range,
-            next_index: 0,
-            next_rev_index: range.len() - 1,
+            next_index,
+            next_rev_index,
         }
     }
 }
@@ -286,6 +289,84 @@ where
         self.get(value).is_some()
     }
 
+    /// Returns `true` if `self` has no elements in common with `other`.
+    /// This is equivalent to checking for an empty intersection.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sorted_vec::SortedVec;
+    ///
+    /// let a: SortedVec<_> = vec![1, 2, 3].into();
+    /// let mut b = SortedVec::new();
+    ///
+    /// assert_eq!(a.is_disjoint(&b), true);
+    /// b.insert(4);
+    /// assert_eq!(a.is_disjoint(&b), true);
+    /// b.insert(1);
+    /// assert_eq!(a.is_disjoint(&b), false);
+    /// ```
+    pub fn is_disjoint(&self, other: &SortedVec<T>) -> bool {
+        self.intersection(other).next().is_none()
+    }
+
+    /// Returns `true` if the set is a subset of another,
+    /// i.e., `other` contains at least all the values in `self`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sorted_vec::SortedVec;
+    ///
+    /// let sup: SortedVec<_> = vec![1, 2, 3].into();
+    /// let mut set = SortedVec::new();
+    ///
+    /// assert_eq!(set.is_subset(&sup), true);
+    /// set.insert(2);
+    /// assert_eq!(set.is_subset(&sup), true);
+    /// set.insert(4);
+    /// assert_eq!(set.is_subset(&sup), false);
+    /// ```
+    pub fn is_subset(&self, other: &SortedVec<T>) -> bool {
+        // Same result as self.difference(other).next().is_none()
+        // but the 3 paths below are faster (in order: hugely, 20%, 5%).
+        if self.len() > other.len() {
+            false
+        } else {
+            // Iterate the small set, searching for matches in the large set.
+            for next in self {
+                if !other.contains(next) {
+                    return false;
+                }
+            }
+            true
+        }
+    }
+
+    /// Returns `true` if the set is a superset of another,
+    /// i.e., `self` contains at least all the values in `other`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sorted_vec::SortedVec;
+    ///
+    /// let sub: SortedVec<_> = vec![1, 2].into();
+    /// let mut set = SortedVec::new();
+    ///
+    /// assert_eq!(set.is_superset(&sub), false);
+    ///
+    /// set.insert(0);
+    /// set.insert(1);
+    /// assert_eq!(set.is_superset(&sub), false);
+    ///
+    /// set.insert(2);
+    /// assert_eq!(set.is_superset(&sub), true);
+    /// ```
+    pub fn is_superset(&self, other: &SortedVec<T>) -> bool {
+        other.is_subset(self)
+    }
+
     /// Returns a reference to the value in the set, if any, that is equal to the given value.
     ///
     /// This is an O(lg n) operation.
@@ -304,7 +385,6 @@ where
         Some(&self.data[raw_idx])
     }
 
-    ///
     /// Returns the rank of the value in the set if it exists (as Result::Ok),
     /// or the rank of its largest predecessor plus one, if it does not exist (as Result::Err).
     /// This is a constant-time operation.
@@ -660,6 +740,156 @@ where
             self.remove(value);
         }
         ret
+    }
+
+    /// Moves all elements from `other` into `Self`, leaving `other` empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sorted_vec::SortedVec;
+    ///
+    /// let mut a = SortedVec::new();
+    /// a.insert(1);
+    /// a.insert(2);
+    /// a.insert(3);
+    ///
+    /// let mut b = SortedVec::new();
+    /// b.insert(3);
+    /// b.insert(4);
+    /// b.insert(5);
+    ///
+    /// a.append(&mut b);
+    ///
+    /// assert_eq!(a.len(), 5);
+    /// assert_eq!(b.len(), 0);
+    ///
+    /// assert!(a.contains(&1));
+    /// assert!(a.contains(&2));
+    /// assert!(a.contains(&3));
+    /// assert!(a.contains(&4));
+    /// assert!(a.contains(&5));
+    /// ```
+    pub fn append(&mut self, other: &mut Self) {
+        // allocate new set and copy union into it
+        let mut union: Self = self.union(other).cloned().collect();
+        // empty `other`
+        other.clear();
+        // steal data from new set and drop data from old set
+        mem::swap(self, &mut union);
+    }
+
+    /// Splits the collection into two at the given key. Returns everything after the given key,
+    /// including the key.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use sorted_vec::SortedVec;
+    ///
+    /// let mut a = SortedVec::new();
+    /// a.insert(1);
+    /// a.insert(2);
+    /// a.insert(3);
+    /// a.insert(17);
+    /// a.insert(41);
+    ///
+    /// let b = a.split_off(&3);
+    ///
+    /// assert_eq!(a.len(), 2);
+    /// assert_eq!(b.len(), 3);
+    ///
+    /// assert!(a.contains(&1));
+    /// assert!(a.contains(&2));
+    ///
+    /// assert!(b.contains(&3));
+    /// assert!(b.contains(&17));
+    /// assert!(b.contains(&41));
+    /// ```
+    pub fn split_off(&mut self, value: &T) -> Self {
+        let tail = self.range((Included(value), Unbounded));
+        if tail.len() == 0 {
+            // if key follows everything in set, just return empty set
+            Self::default()
+        } else if tail.len() == self.len() {
+            // if key precedes everything in set, just return moved self
+            mem::replace(self, Self::default())
+        } else {
+            // return tail and truncate self
+            let new_len = self.len() - tail.len();
+            let tail_set: Self = tail.cloned().collect();
+            self.truncate(new_len);
+            tail_set
+        }
+    }
+
+    /// Truncates the sorted sequence, keeping the first `len` elements and dropping
+    /// the rest.
+    ///
+    /// If `len` is greater than the set's current length, this has no
+    /// effect.
+    ///
+    /// # Examples
+    ///
+    /// Truncating a five-element set to two elements:
+    ///
+    /// ```
+    /// use sorted_vec::SortedVec;
+    ///
+    /// let mut set: SortedVec<_> = vec![1, 2, 3, 4, 5].into();
+    /// set.truncate(2);
+    /// assert_eq!(set, vec![1, 2].into());
+    /// ```
+    ///
+    /// No truncation occurs when `len` is greater than the vector's current
+    /// length:
+    ///
+    /// ```
+    /// use sorted_vec::SortedVec;
+    ///
+    /// let mut set: SortedVec<_> = vec![1, 2, 3].into();
+    /// set.truncate(8);
+    /// assert_eq!(set, vec![1, 2, 3].into());
+    /// ```
+    ///
+    /// Truncating when `len == 0` is equivalent to calling the [`clear`]
+    /// method.
+    ///
+    /// ```
+    /// use sorted_vec::SortedVec;
+    ///
+    /// let mut set: SortedVec<_> = vec![1, 2, 3].into();
+    /// set.truncate(0);
+    /// assert_eq!(set, vec![].into());
+    /// ```
+    pub fn truncate(&mut self, len: usize) {
+        if len == 0 {
+            self.clear();
+        // if len >= self.len(), do nothing
+        } else if len < self.len() {
+            // logical index corresponding to truncated length
+            let index = len - 1;
+            // find subarray containing logical index (we don't need to translate to raw index for this)
+            let subarray_idx = Self::get_subarray_idx_from_array_idx(index);
+            let subarray_offset = Self::get_array_idx_from_subarray_idx(subarray_idx);
+            let next_subarray_offset = if subarray_idx == self.min_indexes.len() - 1 {
+                self.data.len()
+            } else {
+                Self::get_array_idx_from_subarray_idx(subarray_idx + 1)
+            };
+            let subarray = &mut self.data[subarray_offset..next_subarray_offset];
+            // sort subarray and update auxiliary arrays
+            let min_offset = self.min_indexes[subarray_idx];
+            subarray.rotate_left(min_offset);
+            self.min_indexes[subarray_idx] = 0;
+            // now we can truncate the whole data array at the logical index
+            self.data.truncate(len);
+            // trim auxiliary arrays
+            self.min_indexes.truncate(subarray_idx + 1);
+            self.min_data.truncate(subarray_idx + 1);
+        }
     }
 
     /// Returns the number of elements in the set.
