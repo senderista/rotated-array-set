@@ -13,9 +13,8 @@ bench = false
 is_sorted = "0.1.1"
 
 [dev-dependencies]
-rand = "0.6.5"
 criterion = "0.3.0"
-lazy_static = "1.4.0"
+proptest = "0.9"
 
 [[bench]]
 name = "my_benchmark"

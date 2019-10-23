@@ -116,6 +116,16 @@ where
             next_rev_index,
         }
     }
+
+    #[inline(always)]
+    fn assert_invariants(&self) -> bool {
+        assert!(self.next_index <= self.range.len());
+        assert!(self.next_rev_index <= self.range.len());
+        if self.next_rev_index < self.next_index {
+            assert!(self.next_index - self.next_rev_index == 1);
+        }
+        true
+    }
 }
 
 /// An owning iterator over the items of a `SortedVec`.
@@ -329,11 +339,11 @@ where
     /// ```
     pub fn is_subset(&self, other: &SortedVec<T>) -> bool {
         // Same result as self.difference(other).next().is_none()
-        // but the 3 paths below are faster (in order: hugely, 20%, 5%).
+        // but much faster.
         if self.len() > other.len() {
             false
         } else {
-            // Iterate the small set, searching for matches in the large set.
+            // Iterate `self`, searching for matches in `other`.
             for next in self {
                 if !other.contains(next) {
                     return false;
@@ -890,6 +900,7 @@ where
             self.min_indexes.truncate(subarray_idx + 1);
             self.min_data.truncate(subarray_idx + 1);
         }
+        debug_assert!(self.assert_invariants());
     }
 
     /// Returns the number of elements in the set.
@@ -931,6 +942,14 @@ where
     /// Gets a double-ended iterator that visits the values in the `SortedVec` in ascending (descending) order.
     ///
     /// # Examples
+    ///
+    /// ```
+    /// use sorted_vec::SortedVec;
+    ///
+    /// let set: SortedVec<usize> = SortedVec::new();
+    /// let mut set_iter = set.iter();
+    /// assert_eq!(set_iter.next(), None);
+    /// ```
     ///
     /// ```
     /// use sorted_vec::SortedVec;
@@ -1368,24 +1387,27 @@ where
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.next_index > self.next_rev_index {
+        if self.len() == 0 || self.next_index > self.next_rev_index {
             None
         } else {
             let current = self.range.at(self.next_index);
             self.next_index += 1;
+            debug_assert!(self.assert_invariants());
             current
         }
     }
 
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        self.next_index += n;
-        if self.next_index > self.next_rev_index {
+        self.next_index = min(self.next_index + n, self.len());
+        let ret = if self.len() == 0 || self.next_index > self.next_rev_index {
             None
         } else {
             let nth = self.range.at(self.next_index);
             self.next_index += 1;
             nth
-        }
+        };
+        debug_assert!(self.assert_invariants());
+        ret
     }
 
     fn count(self) -> usize {
@@ -1393,11 +1415,19 @@ where
     }
 
     fn last(self) -> Option<Self::Item> {
-        self.range.at(self.len() - 1)
+        if self.len() == 0 {
+            None
+        } else {
+            self.range.at(self.len() - 1)
+        }
     }
 
     fn max(self) -> Option<Self::Item> {
-        self.range.at(self.len() - 1)
+        if self.len() == 0 {
+            None
+        } else {
+            self.range.at(self.len() - 1)
+        }
     }
 
     fn min(self) -> Option<Self::Item> {
@@ -1420,24 +1450,41 @@ where
     T: Ord + Copy + Default + Debug,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
-        if self.next_rev_index < self.next_index {
+        if self.len() == 0 || self.next_rev_index < self.next_index {
             None
         } else {
             let current = self.range.at(self.next_rev_index);
-            self.next_rev_index -= 1;
+            // We can't decrement next_rev_index past 0, so we cheat and move next_index
+            // ahead instead. That works since next() must return None once next_rev_index
+            // has crossed next_index.
+            if self.next_rev_index == 0 {
+                self.next_index += 1;
+            } else {
+                self.next_rev_index -= 1;
+            }
+            debug_assert!(self.assert_invariants());
             current
         }
     }
 
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
-        self.next_rev_index -= n;
-        if self.next_rev_index < self.next_index {
+        self.next_rev_index = self.next_rev_index.saturating_sub(n);
+        let ret = if self.len() == 0 || self.next_rev_index < self.next_index {
             None
         } else {
             let nth = self.range.at(self.next_rev_index);
-            self.next_rev_index -= 1;
+            // We can't decrement next_rev_index past 0, so we cheat and move next_index
+            // ahead instead. That works since next() must return None once next_rev_index
+            // has crossed next_index.
+            if self.next_rev_index == 0 {
+                self.next_index += 1;
+            } else {
+                self.next_rev_index -= 1;
+            }
             nth
-        }
+        };
+        debug_assert!(self.assert_invariants());
+        ret
     }
 }
 
@@ -1486,11 +1533,12 @@ where
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.next_index >= self.vec.len() {
+        if self.next_index == self.vec.len() {
             None
         } else {
             let current = self.vec[self.next_index];
             self.next_index += 1;
+            debug_assert!(self.next_index <= self.vec.len());
             Some(current)
         }
     }
@@ -1588,7 +1636,7 @@ where
 
 impl<T> FusedIterator for Intersection<'_, T> where T: Ord + Copy + Default + Debug {}
 
-impl<'a, T: Ord> Iterator for Union<'a, T>
+impl<'a, T> Iterator for Union<'a, T>
 where
     T: Ord + Copy + Default + Debug,
 {
@@ -1682,122 +1730,11 @@ where
     }
 }
 
-impl<T: Ord> Default for SortedVec<T>
+impl<T> Default for SortedVec<T>
 where
     T: Ord + Copy + Default + Debug,
 {
     fn default() -> SortedVec<T> {
         SortedVec::new()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use rand::distributions::Standard;
-    use rand::prelude::*;
-    use rand::rngs::SmallRng;
-
-    const NUM_ELEMS: usize = 1 << 10;
-    // only works on nightly, uncomment when from_be_bytes is stabilized as a const fn
-    // const SEED: u64 = u64::from_be_bytes(*b"cafebabe");
-
-    #[test]
-    fn insert_remove() {
-        // FIXME: remove when const fns are in stable
-        let seed: u64 = u64::from_be_bytes(*b"cafebabe");
-        let mut rng: SmallRng = SeedableRng::seed_from_u64(seed);
-        let iter = rng.sample_iter(&Standard).take(NUM_ELEMS);
-        let mut sorted_vec: SortedVec<usize> = SortedVec::new();
-        for v in iter {
-            assert!(sorted_vec.insert(v));
-        }
-        let mut rng: SmallRng = SeedableRng::seed_from_u64(seed);
-        let iter = rng.sample_iter(&Standard).take(NUM_ELEMS);
-        for v in iter {
-            assert!(sorted_vec.remove(&v));
-        }
-        assert!(sorted_vec.is_empty());
-    }
-
-    #[test]
-    fn rank_select() {
-        // FIXME: remove when const fns are in stable
-        let seed: u64 = u64::from_be_bytes(*b"cafebabe");
-        let mut rng: SmallRng = SeedableRng::seed_from_u64(seed);
-        let iter = rng.sample_iter(&Standard).take(NUM_ELEMS);
-        let mut sorted_vec: SortedVec<usize> = SortedVec::new();
-        for v in iter {
-            assert!(sorted_vec.insert(v));
-        }
-        let mut rng: SmallRng = SeedableRng::seed_from_u64(seed);
-        let iter = rng.sample_iter(&Standard).take(NUM_ELEMS);
-        for v1 in iter {
-            let p = sorted_vec.rank(&v1).unwrap();
-            let v2 = *sorted_vec.select(p).unwrap();
-            assert!(v1 == v2);
-        }
-    }
-
-    #[test]
-    fn compare_iter() {
-        // FIXME: remove when const fns are in stable
-        let seed: u64 = u64::from_be_bytes(*b"cafebabe");
-        let mut rng: SmallRng = SeedableRng::seed_from_u64(seed);
-        let iter = rng.sample_iter(&Standard).take(NUM_ELEMS);
-        let mut sorted_vec: SortedVec<usize> = SortedVec::new();
-        for v in iter {
-            assert!(sorted_vec.insert(v));
-        }
-        let iter = sorted_vec.iter();
-        for (i, &v) in iter.enumerate() {
-            assert!(*sorted_vec.select(i).unwrap() == v);
-        }
-    }
-
-    #[test]
-    fn compare_into_iter() {
-        // FIXME: remove when const fns are in stable
-        let seed: u64 = u64::from_be_bytes(*b"cafebabe");
-        let mut rng: SmallRng = SeedableRng::seed_from_u64(seed);
-        let iter = rng.sample_iter(&Standard).take(NUM_ELEMS as usize);
-        let mut sorted_vec: SortedVec<usize> = SortedVec::new();
-        for v in iter {
-            assert!(sorted_vec.insert(v));
-        }
-        let mut iter = sorted_vec.clone().into_iter();
-        for i in 0..NUM_ELEMS {
-            assert!(*sorted_vec.select(i).unwrap() == iter.next().unwrap());
-        }
-    }
-
-    #[test]
-    fn test_iter_overrides() {
-        let sorted_vec: SortedVec<_> = (0usize..NUM_ELEMS).collect();
-        let iter = sorted_vec.iter();
-        assert!(*iter.min().unwrap() == *sorted_vec.select(0).unwrap());
-        assert!(*iter.max().unwrap() == *sorted_vec.select(NUM_ELEMS - 1).unwrap());
-        assert!(*iter.last().unwrap() == *sorted_vec.select(NUM_ELEMS - 1).unwrap());
-        assert!(iter.count() == sorted_vec.len());
-        let step = NUM_ELEMS / 10;
-        let mut iter_nth = iter;
-        assert!(*iter_nth.nth(step - 1).unwrap() == *sorted_vec.select(step - 1).unwrap());
-        assert!(*iter_nth.nth(step - 1).unwrap() == *sorted_vec.select((2 * step) - 1).unwrap());
-        let mut iter_nth_back = iter;
-        let last_index = sorted_vec.len() - 1;
-        assert!(
-            *iter_nth_back.nth_back(step - 1).unwrap()
-                == *sorted_vec.select(last_index - step + 1).unwrap()
-        );
-        assert!(
-            *iter_nth_back.nth_back(step - 1).unwrap()
-                == *sorted_vec.select(last_index - (2 * step) + 1).unwrap()
-        );
-        let mut iter_mut = sorted_vec.iter();
-        for i in 0..(NUM_ELEMS / 2) {
-            assert!(*iter_mut.next().unwrap() == *sorted_vec.select(i).unwrap());
-            assert!(*iter_mut.next_back().unwrap() == *sorted_vec.select(last_index - i).unwrap());
-        }
-        assert!(iter_mut.next().is_none());
     }
 }
