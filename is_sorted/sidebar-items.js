@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["is_sorted_until_by",""]],"trait":[["IsSorted","Extends `Iterator` with `is_sorted`, `is_sorted_by`, and `is_sorted_by_key`."]]});

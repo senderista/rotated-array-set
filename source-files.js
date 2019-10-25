@@ -1,3 +1,4 @@
 var N = null;var sourcesIndex = {};
-sourcesIndex["sorted_vec"] = {"name":"","dirs":[],"files":["lib.rs"]};
+sourcesIndex["is_sorted"] = {"name":"","files":["lib.rs"]};
+sourcesIndex["sorted_vec"] = {"name":"","files":["lib.rs"]};
 createSourceSidebar();
