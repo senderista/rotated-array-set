@@ -1742,6 +1742,9 @@
 <span id="1742">1742</span>
 <span id="1743">1743</span>
 <span id="1744">1744</span>
+<span id="1745">1745</span>
+<span id="1746">1746</span>
+<span id="1747">1747</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! A set based on a 2-level rotated array.</span>
 <span class="doccomment">//!</span>
@@ -1791,9 +1794,12 @@
 <span class="comment">// remove when Iterator::is_sorted is stabilized</span>
 <span class="kw">use</span> <span class="ident">is_sorted</span>::<span class="ident">IsSorted</span>;
 
-<span class="comment">// The basic data structure, containing a data array and two auxiliary arrays</span>
-<span class="comment">// respectively listing the index of the minimum element in each chunk, and the</span>
-<span class="comment">// minimum element itself, for efficient binary search.</span>
+<span class="doccomment">/// A sorted set data structure, containing a data array and two auxiliary arrays</span>
+<span class="doccomment">/// respectively listing the index of the minimum element in each chunk, and the</span>
+<span class="doccomment">/// minimum element itself, for efficient binary search.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// This `struct` is created by the [`new`] and [`with_capacity`] methods on [`SortedVec`][`SortedVec`].</span>
+<span class="doccomment">/// See their documentation for more.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SortedVec</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
     <span class="ident">data</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>,
