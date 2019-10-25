@@ -2025,7 +2025,7 @@
 
     <span class="doccomment">/// Returns `true` if the set contains a value.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// This is an O(lg n) operation.</span>
+    <span class="doccomment">/// This is an `O(lg n)` operation.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Examples</span>
     <span class="doccomment">///</span>
@@ -2120,7 +2120,7 @@
 
     <span class="doccomment">/// Returns a reference to the value in the set, if any, that is equal to the given value.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// This is an O(lg n) operation.</span>
+    <span class="doccomment">/// This is an `O(lg n)` operation.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Examples</span>
     <span class="doccomment">///</span>
@@ -2136,8 +2136,8 @@
         <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">data</span>[<span class="ident">raw_idx</span>])
     }
 
-    <span class="doccomment">/// Returns the rank of the value in the set if it exists (as Result::Ok),</span>
-    <span class="doccomment">/// or the rank of its largest predecessor plus one, if it does not exist (as Result::Err).</span>
+    <span class="doccomment">/// Returns the rank of the value in the set if it exists (as `Result::Ok`),</span>
+    <span class="doccomment">/// or the rank of its largest predecessor plus one, if it does not exist (as `Result::Err`).</span>
     <span class="doccomment">/// This is a constant-time operation.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Examples</span>
@@ -2213,7 +2213,7 @@
 
     <span class="doccomment">/// Adds a value to the set.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// This is an O(√n) operation.</span>
+    <span class="doccomment">/// This is an `O(√n)` operation.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// If the set did not have this value present, `true` is returned.</span>
     <span class="doccomment">///</span>
@@ -2333,7 +2333,7 @@
     <span class="doccomment">/// Removes a value from the set. Returns whether the value was</span>
     <span class="doccomment">/// present in the set.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// This is an O(√n) operation.</span>
+    <span class="doccomment">/// This is an `O(√n)` operation.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Examples</span>
     <span class="doccomment">///</span>
@@ -2474,7 +2474,7 @@
 
     <span class="doccomment">/// Removes and returns the value in the set, if any, that is equal to the given one.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// This is an O(√n) operation.</span>
+    <span class="doccomment">/// This is an `O(√n)` operation.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Examples</span>
     <span class="doccomment">///</span>
@@ -2530,8 +2530,8 @@
         <span class="ident">mem</span>::<span class="ident">swap</span>(<span class="self">self</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">union</span>);
     }
 
-    <span class="doccomment">/// Splits the collection into two at the given key. Returns everything after the given key,</span>
-    <span class="doccomment">/// including the key.</span>
+    <span class="doccomment">/// Splits the collection into two at `value`. Returns everything after `value`,</span>
+    <span class="doccomment">/// including `value` itself.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Examples</span>
     <span class="doccomment">///</span>
@@ -2721,7 +2721,7 @@
 
     <span class="doccomment">/// Constructs a double-ended iterator over a sub-range of elements in the set.</span>
     <span class="doccomment">/// The simplest way is to use the range syntax `min..max`, thus `range(min..max)` will</span>
-    <span class="doccomment">/// yield elements from min (inclusive) to max (exclusive).</span>
+    <span class="doccomment">/// yield elements from `min` (inclusive) to `max` (exclusive).</span>
     <span class="doccomment">/// The range may also be entered as `(Bound&lt;T&gt;, Bound&lt;T&gt;)`, so for example</span>
     <span class="doccomment">/// `range((Excluded(4), Included(10)))` will yield a left-exclusive, right-inclusive</span>
     <span class="doccomment">/// range from 4 to 10.</span>
