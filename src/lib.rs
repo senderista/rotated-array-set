@@ -284,7 +284,7 @@ where
 
     /// Returns `true` if the set contains a value.
     ///
-    /// This is an O(lg n) operation.
+    /// This is an `O(lg n)` operation.
     ///
     /// # Examples
     ///
@@ -379,7 +379,7 @@ where
 
     /// Returns a reference to the value in the set, if any, that is equal to the given value.
     ///
-    /// This is an O(lg n) operation.
+    /// This is an `O(lg n)` operation.
     ///
     /// # Examples
     ///
@@ -395,8 +395,8 @@ where
         Some(&self.data[raw_idx])
     }
 
-    /// Returns the rank of the value in the set if it exists (as Result::Ok),
-    /// or the rank of its largest predecessor plus one, if it does not exist (as Result::Err).
+    /// Returns the rank of the value in the set if it exists (as `Result::Ok`),
+    /// or the rank of its largest predecessor plus one, if it does not exist (as `Result::Err`).
     /// This is a constant-time operation.
     ///
     /// # Examples
@@ -472,7 +472,7 @@ where
 
     /// Adds a value to the set.
     ///
-    /// This is an O(√n) operation.
+    /// This is an `O(√n)` operation.
     ///
     /// If the set did not have this value present, `true` is returned.
     ///
@@ -592,7 +592,7 @@ where
     /// Removes a value from the set. Returns whether the value was
     /// present in the set.
     ///
-    /// This is an O(√n) operation.
+    /// This is an `O(√n)` operation.
     ///
     /// # Examples
     ///
@@ -733,7 +733,7 @@ where
 
     /// Removes and returns the value in the set, if any, that is equal to the given one.
     ///
-    /// This is an O(√n) operation.
+    /// This is an `O(√n)` operation.
     ///
     /// # Examples
     ///
@@ -789,8 +789,8 @@ where
         mem::swap(self, &mut union);
     }
 
-    /// Splits the collection into two at the given key. Returns everything after the given key,
-    /// including the key.
+    /// Splits the collection into two at `value`. Returns everything after `value`,
+    /// including `value` itself.
     ///
     /// # Examples
     ///
@@ -980,7 +980,7 @@ where
 
     /// Constructs a double-ended iterator over a sub-range of elements in the set.
     /// The simplest way is to use the range syntax `min..max`, thus `range(min..max)` will
-    /// yield elements from min (inclusive) to max (exclusive).
+    /// yield elements from `min` (inclusive) to `max` (exclusive).
     /// The range may also be entered as `(Bound<T>, Bound<T>)`, so for example
     /// `range((Excluded(4), Included(10)))` will yield a left-exclusive, right-inclusive
     /// range from 4 to 10.
