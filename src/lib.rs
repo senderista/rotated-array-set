@@ -4,7 +4,7 @@
 //! benefits and drawbacks.
 
 #![doc(html_root_url = "https://senderista.github.io/sorted-vec/")]
-#![doc(html_logo_url = "https://raw.githubusercontent.com/senderista/sorted-vec/master/cells.png")]
+#![doc(html_logo_url = "https://raw.githubusercontent.com/senderista/sorted-vec/master/img/cells.png")]
 
 use std::cmp::Ordering::{self, Equal, Greater, Less};
 use std::cmp::{max, min};
