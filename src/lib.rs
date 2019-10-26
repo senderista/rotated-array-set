@@ -1,3 +1,8 @@
+//! An ordered set based on a 2-level rotated array.
+//!
+//! See <a href="https://github.com/senderista/sorted-vec/blob/master/README.md">the repository README</a> for a detailed discussion of this collection's performance
+//! benefits and drawbacks.
+
 #![doc(html_root_url = "https://senderista.github.io/sorted-vec/")]
 #![doc(html_logo_url = "https://raw.githubusercontent.com/senderista/sorted-vec/master/cells.png")]
 
@@ -12,10 +17,7 @@ use std::ops::RangeBounds;
 // remove when Iterator::is_sorted is stabilized
 use is_sorted::IsSorted;
 
-/// A set based on a 2-level rotated array.
-///
-/// See <a href="https://github.com/senderista/sorted-vec/blob/master/README.md">the repository README</a> for a detailed discussion of this collection's performance
-/// benefits and drawbacks.
+/// An ordered set based on a 2-level rotated array.
 ///
 /// # Examples
 ///
@@ -96,6 +98,9 @@ where
 ///
 /// This `struct` is created by the [`iter`] method on [`SortedVec`][`SortedVec`].
 /// See its documentation for more.
+///
+/// [`SortedVec`]: struct.SortedVec.html
+/// [`iter`]: struct.SortedVec.html#method.iter
 #[derive(Debug, Copy, Clone)]
 pub struct Iter<'a, T: 'a> {
     range: Range<'a, T>,
