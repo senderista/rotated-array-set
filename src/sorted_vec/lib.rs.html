@@ -1743,42 +1743,11 @@
 <span id="1743">1743</span>
 <span id="1744">1744</span>
 <span id="1745">1745</span>
-<span id="1746">1746</span>
-<span id="1747">1747</span>
 </pre><div class="example-wrap"><pre class="rust ">
-<span class="doccomment">//! A set based on a 2-level rotated array.</span>
+<span class="doccomment">//! An ordered set based on a 2-level rotated array.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! See &lt;a href=&quot;https://github.com/senderista/sorted-vec/blob/master/README.md&quot;&gt;the repository README&lt;/a&gt; for a detailed discussion of this collection&#39;s performance</span>
 <span class="doccomment">//! benefits and drawbacks.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! # Examples</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ```</span>
-<span class="doccomment">//! use sorted_vec::SortedVec;</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! // Type inference lets us omit an explicit type signature (which</span>
-<span class="doccomment">//! // would be `SortedVec&lt;i32&gt;` in this example).</span>
-<span class="doccomment">//! let mut ints = SortedVec::new();</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! // Add some integers.</span>
-<span class="doccomment">//! ints.insert(-1);</span>
-<span class="doccomment">//! ints.insert(6);</span>
-<span class="doccomment">//! ints.insert(1729);</span>
-<span class="doccomment">//! ints.insert(24);</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! // Check for a specific one.</span>
-<span class="doccomment">//! if !ints.contains(&amp;42) {</span>
-<span class="doccomment">//!     println!(&quot;We don&#39;t have the answer to Life, the Universe, and Everything :-(&quot;);</span>
-<span class="doccomment">//! }</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! // Remove an integer.</span>
-<span class="doccomment">//! ints.remove(&amp;6);</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! // Iterate over everything.</span>
-<span class="doccomment">//! for int in &amp;ints {</span>
-<span class="doccomment">//!     println!(&quot;{}&quot;, int);</span>
-<span class="doccomment">//! }</span>
-<span class="doccomment">//! ```</span>
 
 <span class="attribute">#![<span class="ident">doc</span>(<span class="ident">html_root_url</span> <span class="op">=</span> <span class="string">&quot;https://senderista.github.io/sorted-vec/&quot;</span>)]</span>
 <span class="attribute">#![<span class="ident">doc</span>(<span class="ident">html_logo_url</span> <span class="op">=</span> <span class="string">&quot;https://raw.githubusercontent.com/senderista/sorted-vec/master/cells.png&quot;</span>)]</span>
@@ -1794,12 +1763,36 @@
 <span class="comment">// remove when Iterator::is_sorted is stabilized</span>
 <span class="kw">use</span> <span class="ident">is_sorted</span>::<span class="ident">IsSorted</span>;
 
-<span class="doccomment">/// A sorted set data structure, containing a data array and two auxiliary arrays</span>
-<span class="doccomment">/// respectively listing the index of the minimum element in each chunk, and the</span>
-<span class="doccomment">/// minimum element itself, for efficient binary search.</span>
+<span class="doccomment">/// An ordered set based on a 2-level rotated array.</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// This `struct` is created by the [`new`] and [`with_capacity`] methods on [`SortedVec`][`SortedVec`].</span>
-<span class="doccomment">/// See their documentation for more.</span>
+<span class="doccomment">/// # Examples</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// ```</span>
+<span class="doccomment">/// use sorted_vec::SortedVec;</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// // Type inference lets us omit an explicit type signature (which</span>
+<span class="doccomment">/// // would be `SortedVec&lt;i32&gt;` in this example).</span>
+<span class="doccomment">/// let mut ints = SortedVec::new();</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// // Add some integers.</span>
+<span class="doccomment">/// ints.insert(-1);</span>
+<span class="doccomment">/// ints.insert(6);</span>
+<span class="doccomment">/// ints.insert(1729);</span>
+<span class="doccomment">/// ints.insert(24);</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// // Check for a specific one.</span>
+<span class="doccomment">/// if !ints.contains(&amp;42) {</span>
+<span class="doccomment">///     println!(&quot;We don&#39;t have the answer to Life, the Universe, and Everything :-(&quot;);</span>
+<span class="doccomment">/// }</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// // Remove an integer.</span>
+<span class="doccomment">/// ints.remove(&amp;6);</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// // Iterate over everything.</span>
+<span class="doccomment">/// for int in &amp;ints {</span>
+<span class="doccomment">///     println!(&quot;{}&quot;, int);</span>
+<span class="doccomment">/// }</span>
+<span class="doccomment">/// ```</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SortedVec</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
     <span class="ident">data</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>,
@@ -1851,6 +1844,9 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// This `struct` is created by the [`iter`] method on [`SortedVec`][`SortedVec`].</span>
 <span class="doccomment">/// See its documentation for more.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// [`SortedVec`]: struct.SortedVec.html</span>
+<span class="doccomment">/// [`iter`]: struct.SortedVec.html#method.iter</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Iter</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span>: <span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="ident">range</span>: <span class="ident">Range</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span><span class="op">&gt;</span>,
