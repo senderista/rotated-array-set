@@ -37,4 +37,4 @@ In practice, this data structure suffers from a problem common to implicit struc
 
 A dynamic array implementation of the same data structure (roughly a drop-in replacement for `Vec`, except that it doesn't support deref to a slice) is available at https://github.com/senderista/rotated-vec.
 
-This implementation is in Rust, and is benchmarked using the <a href="https://github.com/bheisler/criterion.rs">Criterion</a> benchmark framework.
+This implementation is in Rust, and is benchmarked using the <a href="https://github.com/bheisler/criterion.rs">Criterion</a> benchmark framework. Preliminary benchmarks are <a href="https://github.com/senderista/sorted-vec/wiki/Benchmarks">here</a>.
