@@ -25,7 +25,7 @@ lazy_static! {
     //     }
     //     sizes
     // };
-    static ref SIZES: Vec<usize> = (10..=27).map(|i| (1 << i) + 10).collect();
+    static ref SIZES: Vec<usize> = (10..=20).map(|i| (1 << i) + 10).collect();
 }
 
 fn find(c: &mut Criterion) {
