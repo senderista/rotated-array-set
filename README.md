@@ -1,4 +1,4 @@
-# rotated-array-vec
+# rotated-array-set
 
 ## A 2-Level Rotated Array Implemented in Rust
 This repository contains implementations, unit tests, and benchmark code for the "2-level rotated array" structure, first published in Munro and Suwanda's 1979 paper <a href="https://doi.org/10.1016%2F0022-0000%2880%2990037-9">"Implicit Data Structures for Fast Search and Update"</a> (which also introduced the much better-known <a href="https://en.wikipedia.org/wiki/Beap">beap</a> data structure). This structure is further developed and discussed in <a href="https://doi.org/10.1145/322358.322364">"Implicit Data Structures for the Dictionary Problem"</a> (1983) and <a href="http://dl.acm.org/citation.cfm?id=645933.673366">"Succinct Dynamic Data Structures"</a> (2001). (The latter generalizes the idea to the dynamic array abstract data type, rather than a sorted array.)
@@ -37,4 +37,4 @@ In practice, this data structure suffers from a problem common to implicit struc
 
 A dynamic array implementation of the same data structure (roughly a drop-in replacement for `Vec`, except that it doesn't support deref to a slice) is available at https://github.com/senderista/rotated-vec.
 
-This implementation is in Rust, and is benchmarked using the <a href="https://github.com/bheisler/criterion.rs">Criterion</a> benchmark framework. Preliminary benchmarks are <a href="https://github.com/senderista/rotated-array-vec/wiki/Benchmarks">here</a>.
+This implementation is in Rust, and is benchmarked using the <a href="https://github.com/bheisler/criterion.rs">Criterion</a> benchmark framework. Preliminary benchmarks are <a href="https://github.com/senderista/rotated-array-set/wiki/Benchmarks">here</a>.
