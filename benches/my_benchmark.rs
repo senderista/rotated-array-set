@@ -6,7 +6,7 @@ use criterion::*;
 use rand::distributions::Standard;
 use rand::prelude::*;
 use rand::rngs::SmallRng;
-use sorted_vec::SortedVec;
+use rotated_array_set::RotatedArraySet;
 use std::collections::BTreeSet;
 
 // only works on nightly, uncomment when from_be_bytes is stabilized as a const fn
@@ -65,13 +65,13 @@ fn find(c: &mut Criterion) {
         SIZES.clone(),
     )
     .bench_function_over_inputs(
-        "Find_SortedVec",
+        "Find_RotatedArraySet",
         |b, &n| {
             // FIXME: remove when const fns are in stable
             let seed: u64 = u64::from_be_bytes(*b"cafebabe");
             let mut rng: SmallRng = SeedableRng::seed_from_u64(seed);
             let iter = rng.sample_iter(&Standard);
-            let mut s: SortedVec<_> = iter.take(n as usize).collect();
+            let mut s: RotatedArraySet<_> = iter.take(n as usize).collect();
             let v = rng.next_u64() as usize;
             s.insert(v);
             b.iter(|| {
@@ -125,13 +125,13 @@ fn insert(c: &mut Criterion) {
         SIZES.clone(),
     )
     .bench_function_over_inputs(
-        "Insert_SortedVec",
+        "Insert_RotatedArraySet",
         |b, &n| {
             // FIXME: remove when const fns are in stable
             let seed: u64 = u64::from_be_bytes(*b"cafebabe");
             let mut rng: SmallRng = SeedableRng::seed_from_u64(seed);
             let iter = rng.sample_iter(&Standard);
-            let s: SortedVec<_> = iter.take(n as usize).collect();
+            let s: RotatedArraySet<_> = iter.take(n as usize).collect();
             b.iter_batched_ref(
                 || s.clone(),
                 |s| {
@@ -189,13 +189,13 @@ fn remove(c: &mut Criterion) {
         SIZES.clone(),
     )
     .bench_function_over_inputs(
-        "Remove_SortedVec",
+        "Remove_RotatedArraySet",
         |b, &n| {
             // FIXME: remove when const fns are in stable
             let seed: u64 = u64::from_be_bytes(*b"cafebabe");
             let mut rng: SmallRng = SeedableRng::seed_from_u64(seed);
             let iter = rng.sample_iter(&Standard);
-            let mut s: SortedVec<_> = iter.take(n as usize).collect();
+            let mut s: RotatedArraySet<_> = iter.take(n as usize).collect();
             let v = rng.next_u64() as usize;
             s.insert(v);
             b.iter_batched_ref(

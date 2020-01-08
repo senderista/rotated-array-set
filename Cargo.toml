@@ -1,11 +1,11 @@
 [package]
-name = "sorted-vec"
+name = "rotated-array-set"
 version = "0.1.0"
 authors = ["Tobin Baker <tobin.d.baker@gmail.com>"]
 edition = "2018"
 
 [lib]
-name = "sorted_vec"
+name = "rotated_array_set"
 path = "src/lib.rs"
 bench = false
 

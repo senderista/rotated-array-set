@@ -4,7 +4,9 @@
 //! benefits and drawbacks.
 
 #![doc(html_root_url = "https://senderista.github.io/sorted-vec/")]
-#![doc(html_logo_url = "https://raw.githubusercontent.com/senderista/sorted-vec/master/img/cells.png")]
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/senderista/sorted-vec/master/img/cells.png"
+)]
 
 use std::cmp::Ordering::{self, Equal, Greater, Less};
 use std::cmp::{max, min};
@@ -22,11 +24,11 @@ use is_sorted::IsSorted;
 /// # Examples
 ///
 /// ```
-/// use sorted_vec::SortedVec;
+/// use rotated_array_set::RotatedArraySet;
 ///
 /// // Type inference lets us omit an explicit type signature (which
-/// // would be `SortedVec<i32>` in this example).
-/// let mut ints = SortedVec::new();
+/// // would be `RotatedArraySet<i32>` in this example).
+/// let mut ints = RotatedArraySet::new();
 ///
 /// // Add some integers.
 /// ints.insert(-1);
@@ -48,7 +50,7 @@ use is_sorted::IsSorted;
 /// }
 /// ```
 #[derive(Debug, Clone)]
-pub struct SortedVec<T> {
+pub struct RotatedArraySet<T> {
     data: Vec<T>,
     min_indexes: Vec<usize>,
     min_data: Vec<T>,
@@ -57,7 +59,7 @@ pub struct SortedVec<T> {
 // Internal encapsulation of container + bounds
 #[derive(Debug, Copy, Clone)]
 struct Range<'a, T: 'a> {
-    container: &'a SortedVec<T>,
+    container: &'a RotatedArraySet<T>,
     start_index_inclusive: usize,
     end_index_exclusive: usize,
 }
@@ -67,7 +69,7 @@ where
     T: Ord + Copy + Default + Debug,
 {
     fn with_bounds(
-        container: &'a SortedVec<T>,
+        container: &'a RotatedArraySet<T>,
         start_index_inclusive: usize,
         end_index_exclusive: usize,
     ) -> Range<'a, T> {
@@ -80,7 +82,7 @@ where
         }
     }
 
-    fn new(container: &'a SortedVec<T>) -> Range<'a, T> {
+    fn new(container: &'a RotatedArraySet<T>) -> Range<'a, T> {
         Range::with_bounds(container, 0, container.len())
     }
 
@@ -94,13 +96,13 @@ where
     }
 }
 
-/// An iterator over the items of a `SortedVec`.
+/// An iterator over the items of a `RotatedArraySet`.
 ///
-/// This `struct` is created by the [`iter`] method on [`SortedVec`][`SortedVec`].
+/// This `struct` is created by the [`iter`] method on [`RotatedArraySet`][`RotatedArraySet`].
 /// See its documentation for more.
 ///
-/// [`SortedVec`]: struct.SortedVec.html
-/// [`iter`]: struct.SortedVec.html#method.iter
+/// [`RotatedArraySet`]: struct.RotatedArraySet.html
+/// [`iter`]: struct.RotatedArraySet.html#method.iter
 #[derive(Debug, Copy, Clone)]
 pub struct Iter<'a, T: 'a> {
     range: Range<'a, T>,
@@ -133,39 +135,39 @@ where
     }
 }
 
-/// An owning iterator over the items of a `SortedVec`.
+/// An owning iterator over the items of a `RotatedArraySet`.
 ///
-/// This `struct` is created by the [`into_iter`] method on [`SortedVec`][`SortedVec`]
+/// This `struct` is created by the [`into_iter`] method on [`RotatedArraySet`][`RotatedArraySet`]
 /// (provided by the `IntoIterator` trait). See its documentation for more.
 ///
-/// [`SortedVec`]: struct.SortedVec.html
-/// [`into_iter`]: struct.SortedVec.html#method.into_iter
+/// [`RotatedArraySet`]: struct.RotatedArraySet.html
+/// [`into_iter`]: struct.RotatedArraySet.html#method.into_iter
 #[derive(Debug, Clone)]
 pub struct IntoIter<T> {
     vec: Vec<T>,
     next_index: usize,
 }
 
-/// A lazy iterator producing elements in the difference of `SortedVec`s.
+/// A lazy iterator producing elements in the difference of `RotatedArraySet`s.
 ///
-/// This `struct` is created by the [`difference`] method on [`SortedVec`].
+/// This `struct` is created by the [`difference`] method on [`RotatedArraySet`].
 /// See its documentation for more.
 ///
-/// [`SortedVec`]: struct.SortedVec.html
-/// [`difference`]: struct.SortedVec.html#method.difference
+/// [`RotatedArraySet`]: struct.RotatedArraySet.html
+/// [`difference`]: struct.RotatedArraySet.html#method.difference
 #[derive(Debug, Clone)]
 pub struct Difference<'a, T: 'a> {
     self_iter: Iter<'a, T>,
-    other_set: &'a SortedVec<T>,
+    other_set: &'a RotatedArraySet<T>,
 }
 
-/// A lazy iterator producing elements in the symmetric difference of `SortedVec`s.
+/// A lazy iterator producing elements in the symmetric difference of `RotatedArraySet`s.
 ///
 /// This `struct` is created by the [`symmetric_difference`] method on
-/// [`SortedVec`]. See its documentation for more.
+/// [`RotatedArraySet`]. See its documentation for more.
 ///
-/// [`SortedVec`]: struct.SortedVec.html
-/// [`symmetric_difference`]: struct.SortedVec.html#method.symmetric_difference
+/// [`RotatedArraySet`]: struct.RotatedArraySet.html
+/// [`symmetric_difference`]: struct.RotatedArraySet.html#method.symmetric_difference
 #[derive(Debug, Clone)]
 pub struct SymmetricDifference<'a, T: 'a>
 where
@@ -175,26 +177,26 @@ where
     b: Peekable<Iter<'a, T>>,
 }
 
-/// A lazy iterator producing elements in the intersection of `SortedVec`s.
+/// A lazy iterator producing elements in the intersection of `RotatedArraySet`s.
 ///
-/// This `struct` is created by the [`intersection`] method on [`SortedVec`].
+/// This `struct` is created by the [`intersection`] method on [`RotatedArraySet`].
 /// See its documentation for more.
 ///
-/// [`SortedVec`]: struct.SortedVec.html
-/// [`intersection`]: struct.SortedVec.html#method.intersection
+/// [`RotatedArraySet`]: struct.RotatedArraySet.html
+/// [`intersection`]: struct.RotatedArraySet.html#method.intersection
 #[derive(Debug, Clone)]
 pub struct Intersection<'a, T: 'a> {
     small_iter: Iter<'a, T>,
-    large_set: &'a SortedVec<T>,
+    large_set: &'a RotatedArraySet<T>,
 }
 
-/// A lazy iterator producing elements in the union of `SortedVec`s.
+/// A lazy iterator producing elements in the union of `RotatedArraySet`s.
 ///
-/// This `struct` is created by the [`union`] method on [`SortedVec`].
+/// This `struct` is created by the [`union`] method on [`RotatedArraySet`].
 /// See its documentation for more.
 ///
-/// [`SortedVec`]: struct.SortedVec.html
-/// [`union`]: struct.SortedVec.html#method.union
+/// [`RotatedArraySet`]: struct.RotatedArraySet.html
+/// [`union`]: struct.RotatedArraySet.html#method.union
 #[derive(Debug, Clone)]
 pub struct Union<'a, T: 'a>
 where
@@ -204,11 +206,11 @@ where
     b: Peekable<Iter<'a, T>>,
 }
 
-impl<T> SortedVec<T>
+impl<T> RotatedArraySet<T>
 where
     T: Ord + Copy + Default + Debug,
 {
-    /// Makes a new `SortedVec` without any heap allocations.
+    /// Makes a new `RotatedArraySet` without any heap allocations.
     ///
     /// This is a constant-time operation.
     ///
@@ -216,19 +218,19 @@ where
     ///
     /// ```
     /// # #![allow(unused_mut)]
-    /// use sorted_vec::SortedVec;
+    /// use rotated_array_set::RotatedArraySet;
     ///
-    /// let mut set: SortedVec<i32> = SortedVec::new();
+    /// let mut set: RotatedArraySet<i32> = RotatedArraySet::new();
     /// ```
     pub fn new() -> Self {
-        SortedVec {
+        RotatedArraySet {
             data: Vec::new(),
             min_indexes: Vec::new(),
             min_data: Vec::new(),
         }
     }
 
-    /// Constructs a new, empty `SortedVec<T>` with the specified capacity.
+    /// Constructs a new, empty `RotatedArraySet<T>` with the specified capacity.
     ///
     /// The set will be able to hold exactly `capacity` elements without
     /// reallocating. If `capacity` is 0, the set will not allocate.
@@ -239,9 +241,9 @@ where
     /// # Examples
     ///
     /// ```
-    /// use sorted_vec::SortedVec;
+    /// use rotated_array_set::RotatedArraySet;
     ///
-    /// let mut set = SortedVec::with_capacity(10);
+    /// let mut set = RotatedArraySet::with_capacity(10);
     ///
     /// // The set contains no items, even though it has capacity for more
     /// assert_eq!(set.len(), 0);
@@ -254,13 +256,13 @@ where
     /// // ...but this may make the set reallocate
     /// set.insert(11);
     /// ```
-    pub fn with_capacity(capacity: usize) -> SortedVec<T> {
+    pub fn with_capacity(capacity: usize) -> RotatedArraySet<T> {
         let min_indexes_capacity = if capacity > 0 {
             Self::get_subarray_idx_from_array_idx(capacity - 1) + 1
         } else {
             0
         };
-        SortedVec {
+        RotatedArraySet {
             data: Vec::with_capacity(capacity),
             min_indexes: Vec::with_capacity(min_indexes_capacity),
             min_data: Vec::with_capacity(min_indexes_capacity),
@@ -274,9 +276,9 @@ where
     /// # Examples
     ///
     /// ```
-    /// use sorted_vec::SortedVec;
+    /// use rotated_array_set::RotatedArraySet;
     ///
-    /// let mut v = SortedVec::new();
+    /// let mut v = RotatedArraySet::new();
     /// v.insert(1);
     /// v.clear();
     /// assert!(v.is_empty());
@@ -294,9 +296,9 @@ where
     /// # Examples
     ///
     /// ```
-    /// use sorted_vec::SortedVec;
+    /// use rotated_array_set::RotatedArraySet;
     ///
-    /// let set: SortedVec<_> = vec![1, 2, 3].into();
+    /// let set: RotatedArraySet<_> = vec![1, 2, 3].into();
     /// assert_eq!(set.contains(&1), true);
     /// assert_eq!(set.contains(&4), false);
     /// ```
@@ -310,10 +312,10 @@ where
     /// # Examples
     ///
     /// ```
-    /// use sorted_vec::SortedVec;
+    /// use rotated_array_set::RotatedArraySet;
     ///
-    /// let a: SortedVec<_> = vec![1, 2, 3].into();
-    /// let mut b = SortedVec::new();
+    /// let a: RotatedArraySet<_> = vec![1, 2, 3].into();
+    /// let mut b = RotatedArraySet::new();
     ///
     /// assert_eq!(a.is_disjoint(&b), true);
     /// b.insert(4);
@@ -321,7 +323,7 @@ where
     /// b.insert(1);
     /// assert_eq!(a.is_disjoint(&b), false);
     /// ```
-    pub fn is_disjoint(&self, other: &SortedVec<T>) -> bool {
+    pub fn is_disjoint(&self, other: &RotatedArraySet<T>) -> bool {
         self.intersection(other).next().is_none()
     }
 
@@ -331,10 +333,10 @@ where
     /// # Examples
     ///
     /// ```
-    /// use sorted_vec::SortedVec;
+    /// use rotated_array_set::RotatedArraySet;
     ///
-    /// let sup: SortedVec<_> = vec![1, 2, 3].into();
-    /// let mut set = SortedVec::new();
+    /// let sup: RotatedArraySet<_> = vec![1, 2, 3].into();
+    /// let mut set = RotatedArraySet::new();
     ///
     /// assert_eq!(set.is_subset(&sup), true);
     /// set.insert(2);
@@ -342,7 +344,7 @@ where
     /// set.insert(4);
     /// assert_eq!(set.is_subset(&sup), false);
     /// ```
-    pub fn is_subset(&self, other: &SortedVec<T>) -> bool {
+    pub fn is_subset(&self, other: &RotatedArraySet<T>) -> bool {
         // Same result as self.difference(other).next().is_none()
         // but much faster.
         if self.len() > other.len() {
@@ -364,10 +366,10 @@ where
     /// # Examples
     ///
     /// ```
-    /// use sorted_vec::SortedVec;
+    /// use rotated_array_set::RotatedArraySet;
     ///
-    /// let sub: SortedVec<_> = vec![1, 2].into();
-    /// let mut set = SortedVec::new();
+    /// let sub: RotatedArraySet<_> = vec![1, 2].into();
+    /// let mut set = RotatedArraySet::new();
     ///
     /// assert_eq!(set.is_superset(&sub), false);
     ///
@@ -378,7 +380,7 @@ where
     /// set.insert(2);
     /// assert_eq!(set.is_superset(&sub), true);
     /// ```
-    pub fn is_superset(&self, other: &SortedVec<T>) -> bool {
+    pub fn is_superset(&self, other: &RotatedArraySet<T>) -> bool {
         other.is_subset(self)
     }
 
@@ -389,9 +391,9 @@ where
     /// # Examples
     ///
     /// ```
-    /// use sorted_vec::SortedVec;
+    /// use rotated_array_set::RotatedArraySet;
     ///
-    /// let set: SortedVec<_> = vec![1, 2, 3].into();
+    /// let set: RotatedArraySet<_> = vec![1, 2, 3].into();
     /// assert_eq!(set.get(&2), Some(&2));
     /// assert_eq!(set.get(&4), None);
     /// ```
@@ -407,9 +409,9 @@ where
     /// # Examples
     ///
     /// ```
-    /// use sorted_vec::SortedVec;
+    /// use rotated_array_set::RotatedArraySet;
     ///
-    /// let set: SortedVec<_> = vec![1, 2, 3].into();
+    /// let set: RotatedArraySet<_> = vec![1, 2, 3].into();
     /// assert_eq!(set.rank(&1), Ok(0));
     /// assert_eq!(set.rank(&4), Err(3));
     /// ```
@@ -449,9 +451,9 @@ where
     /// # Examples
     ///
     /// ```
-    /// use sorted_vec::SortedVec;
+    /// use rotated_array_set::RotatedArraySet;
     ///
-    /// let set: SortedVec<_> = vec![1, 2, 3].into();
+    /// let set: RotatedArraySet<_> = vec![1, 2, 3].into();
     /// assert_eq!(set.select(0), Some(&1));
     /// assert_eq!(set.select(3), None);
     /// ```
@@ -487,9 +489,9 @@ where
     /// # Examples
     ///
     /// ```
-    /// use sorted_vec::SortedVec;
+    /// use rotated_array_set::RotatedArraySet;
     ///
-    /// let mut set = SortedVec::new();
+    /// let mut set = RotatedArraySet::new();
     ///
     /// assert_eq!(set.insert(2), true);
     /// assert_eq!(set.insert(2), false);
@@ -602,9 +604,9 @@ where
     /// # Examples
     ///
     /// ```
-    /// use sorted_vec::SortedVec;
+    /// use rotated_array_set::RotatedArraySet;
     ///
-    /// let mut set = SortedVec::new();
+    /// let mut set = RotatedArraySet::new();
     ///
     /// set.insert(2);
     /// assert_eq!(set.remove(&2), true);
@@ -743,9 +745,9 @@ where
     /// # Examples
     ///
     /// ```
-    /// use sorted_vec::SortedVec;
+    /// use rotated_array_set::RotatedArraySet;
     ///
-    /// let mut set: SortedVec<_> = vec![1, 2, 3].into();
+    /// let mut set: RotatedArraySet<_> = vec![1, 2, 3].into();
     /// assert_eq!(set.take(&2), Some(2));
     /// assert_eq!(set.take(&2), None);
     /// ```
@@ -762,14 +764,14 @@ where
     /// # Examples
     ///
     /// ```
-    /// use sorted_vec::SortedVec;
+    /// use rotated_array_set::RotatedArraySet;
     ///
-    /// let mut a = SortedVec::new();
+    /// let mut a = RotatedArraySet::new();
     /// a.insert(1);
     /// a.insert(2);
     /// a.insert(3);
     ///
-    /// let mut b = SortedVec::new();
+    /// let mut b = RotatedArraySet::new();
     /// b.insert(3);
     /// b.insert(4);
     /// b.insert(5);
@@ -802,9 +804,9 @@ where
     /// Basic usage:
     ///
     /// ```
-    /// use sorted_vec::SortedVec;
+    /// use rotated_array_set::RotatedArraySet;
     ///
-    /// let mut a = SortedVec::new();
+    /// let mut a = RotatedArraySet::new();
     /// a.insert(1);
     /// a.insert(2);
     /// a.insert(3);
@@ -851,9 +853,9 @@ where
     /// Truncating a five-element set to two elements:
     ///
     /// ```
-    /// use sorted_vec::SortedVec;
+    /// use rotated_array_set::RotatedArraySet;
     ///
-    /// let mut set: SortedVec<_> = vec![1, 2, 3, 4, 5].into();
+    /// let mut set: RotatedArraySet<_> = vec![1, 2, 3, 4, 5].into();
     /// set.truncate(2);
     /// assert_eq!(set, vec![1, 2].into());
     /// ```
@@ -862,9 +864,9 @@ where
     /// length:
     ///
     /// ```
-    /// use sorted_vec::SortedVec;
+    /// use rotated_array_set::RotatedArraySet;
     ///
-    /// let mut set: SortedVec<_> = vec![1, 2, 3].into();
+    /// let mut set: RotatedArraySet<_> = vec![1, 2, 3].into();
     /// set.truncate(8);
     /// assert_eq!(set, vec![1, 2, 3].into());
     /// ```
@@ -873,9 +875,9 @@ where
     /// method.
     ///
     /// ```
-    /// use sorted_vec::SortedVec;
+    /// use rotated_array_set::RotatedArraySet;
     ///
-    /// let mut set: SortedVec<_> = vec![1, 2, 3].into();
+    /// let mut set: RotatedArraySet<_> = vec![1, 2, 3].into();
     /// set.truncate(0);
     /// assert_eq!(set, vec![].into());
     /// ```
@@ -915,9 +917,9 @@ where
     /// # Examples
     ///
     /// ```
-    /// use sorted_vec::SortedVec;
+    /// use rotated_array_set::RotatedArraySet;
     ///
-    /// let mut v = SortedVec::new();
+    /// let mut v = RotatedArraySet::new();
     /// assert_eq!(v.len(), 0);
     /// v.insert(1);
     /// assert_eq!(v.len(), 1);
@@ -933,9 +935,9 @@ where
     /// # Examples
     ///
     /// ```
-    /// use sorted_vec::SortedVec;
+    /// use rotated_array_set::RotatedArraySet;
     ///
-    /// let mut v = SortedVec::new();
+    /// let mut v = RotatedArraySet::new();
     /// assert!(v.is_empty());
     /// v.insert(1);
     /// assert!(!v.is_empty());
@@ -944,22 +946,22 @@ where
         self.data.is_empty()
     }
 
-    /// Gets a double-ended iterator that visits the values in the `SortedVec` in ascending (descending) order.
+    /// Gets a double-ended iterator that visits the values in the `RotatedArraySet` in ascending (descending) order.
     ///
     /// # Examples
     ///
     /// ```
-    /// use sorted_vec::SortedVec;
+    /// use rotated_array_set::RotatedArraySet;
     ///
-    /// let set: SortedVec<usize> = SortedVec::new();
+    /// let set: RotatedArraySet<usize> = RotatedArraySet::new();
     /// let mut set_iter = set.iter();
     /// assert_eq!(set_iter.next(), None);
     /// ```
     ///
     /// ```
-    /// use sorted_vec::SortedVec;
+    /// use rotated_array_set::RotatedArraySet;
     ///
-    /// let set: SortedVec<usize> = vec![1, 2, 3].into();
+    /// let set: RotatedArraySet<usize> = vec![1, 2, 3].into();
     /// let mut set_iter = set.iter();
     /// assert_eq!(set_iter.next(), Some(&1));
     /// assert_eq!(set_iter.next(), Some(&2));
@@ -970,9 +972,9 @@ where
     /// Values returned by the iterator are returned in ascending order:
     ///
     /// ```
-    /// use sorted_vec::SortedVec;
+    /// use rotated_array_set::RotatedArraySet;
     ///
-    /// let set: SortedVec<usize> = vec![3, 1, 2].into();
+    /// let set: RotatedArraySet<usize> = vec![3, 1, 2].into();
     /// let mut set_iter = set.iter();
     /// assert_eq!(set_iter.next(), Some(&1));
     /// assert_eq!(set_iter.next(), Some(&2));
@@ -993,10 +995,10 @@ where
     /// # Examples
     ///
     /// ```
-    /// use sorted_vec::SortedVec;
+    /// use rotated_array_set::RotatedArraySet;
     /// use std::ops::Bound::Included;
     ///
-    /// let mut set = SortedVec::new();
+    /// let mut set = RotatedArraySet::new();
     /// set.insert(3);
     /// set.insert(5);
     /// set.insert(8);
@@ -1007,10 +1009,10 @@ where
     /// ```
     ///
     /// ```
-    /// use sorted_vec::SortedVec;
+    /// use rotated_array_set::RotatedArraySet;
     /// use std::ops::Bound::{Included, Excluded};
     ///
-    /// let mut set: SortedVec<_> = (1..10).collect();
+    /// let mut set: RotatedArraySet<_> = (1..10).collect();
     /// let range: Vec<_> = set.range((Included(&4), Excluded(&8))).cloned().collect();
     /// assert_eq!(range, vec![4, 5, 6, 7]);
     /// ```
@@ -1028,7 +1030,7 @@ where
     {
         match (range.start_bound(), range.end_bound()) {
             (Excluded(s), Excluded(e)) if s == e => {
-                panic!("range start and end are equal and excluded in SortedVec")
+                panic!("range start and end are equal and excluded in RotatedArraySet")
             }
             (Included(s), Included(e))
             | (Included(s), Excluded(e))
@@ -1036,7 +1038,7 @@ where
             | (Excluded(s), Excluded(e))
                 if s > e =>
             {
-                panic!("range start is greater than range end in SortedVec")
+                panic!("range start is greater than range end in RotatedArraySet")
             }
             _ => {}
         };
@@ -1072,20 +1074,20 @@ where
     /// # Examples
     ///
     /// ```
-    /// use sorted_vec::SortedVec;
+    /// use rotated_array_set::RotatedArraySet;
     ///
-    /// let mut a = SortedVec::new();
+    /// let mut a = RotatedArraySet::new();
     /// a.insert(1);
     /// a.insert(2);
     ///
-    /// let mut b = SortedVec::new();
+    /// let mut b = RotatedArraySet::new();
     /// b.insert(2);
     /// b.insert(3);
     ///
     /// let diff: Vec<_> = a.difference(&b).cloned().collect();
     /// assert_eq!(diff, [1]);
     /// ```
-    pub fn difference<'a>(&'a self, other: &'a SortedVec<T>) -> Difference<'a, T> {
+    pub fn difference<'a>(&'a self, other: &'a RotatedArraySet<T>) -> Difference<'a, T> {
         Difference {
             self_iter: self.iter(),
             other_set: other,
@@ -1099,13 +1101,13 @@ where
     /// # Examples
     ///
     /// ```
-    /// use sorted_vec::SortedVec;
+    /// use rotated_array_set::RotatedArraySet;
     ///
-    /// let mut a = SortedVec::new();
+    /// let mut a = RotatedArraySet::new();
     /// a.insert(1);
     /// a.insert(2);
     ///
-    /// let mut b = SortedVec::new();
+    /// let mut b = RotatedArraySet::new();
     /// b.insert(2);
     /// b.insert(3);
     ///
@@ -1114,7 +1116,7 @@ where
     /// ```
     pub fn symmetric_difference<'a>(
         &'a self,
-        other: &'a SortedVec<T>,
+        other: &'a RotatedArraySet<T>,
     ) -> SymmetricDifference<'a, T> {
         SymmetricDifference {
             a: self.iter().peekable(),
@@ -1129,20 +1131,20 @@ where
     /// # Examples
     ///
     /// ```
-    /// use sorted_vec::SortedVec;
+    /// use rotated_array_set::RotatedArraySet;
     ///
-    /// let mut a = SortedVec::new();
+    /// let mut a = RotatedArraySet::new();
     /// a.insert(1);
     /// a.insert(2);
     ///
-    /// let mut b = SortedVec::new();
+    /// let mut b = RotatedArraySet::new();
     /// b.insert(2);
     /// b.insert(3);
     ///
     /// let intersection: Vec<_> = a.intersection(&b).cloned().collect();
     /// assert_eq!(intersection, [2]);
     /// ```
-    pub fn intersection<'a>(&'a self, other: &'a SortedVec<T>) -> Intersection<'a, T> {
+    pub fn intersection<'a>(&'a self, other: &'a RotatedArraySet<T>) -> Intersection<'a, T> {
         let (small, other) = if self.len() <= other.len() {
             (self, other)
         } else {
@@ -1162,20 +1164,20 @@ where
     /// # Examples
     ///
     /// ```
-    /// use sorted_vec::SortedVec;
+    /// use rotated_array_set::RotatedArraySet;
     ///
-    /// let mut a = SortedVec::new();
+    /// let mut a = RotatedArraySet::new();
     /// a.insert(1);
     /// a.insert(2);
     ///
-    /// let mut b = SortedVec::new();
+    /// let mut b = RotatedArraySet::new();
     /// b.insert(2);
     /// b.insert(3);
     ///
     /// let union: Vec<_> = a.union(&b).cloned().collect();
     /// assert_eq!(union, [1, 2, 3]);
     /// ```
-    pub fn union<'a>(&'a self, other: &'a SortedVec<T>) -> Union<'a, T> {
+    pub fn union<'a>(&'a self, other: &'a RotatedArraySet<T>) -> Union<'a, T> {
         Union {
             a: self.iter().peekable(),
             b: other.iter().peekable(),
@@ -1355,7 +1357,7 @@ where
     }
 }
 
-impl<T> PartialEq for SortedVec<T>
+impl<T> PartialEq for RotatedArraySet<T>
 where
     T: Ord + Copy + Default + Debug,
 {
@@ -1372,9 +1374,9 @@ where
     }
 }
 
-impl<T> Eq for SortedVec<T> where T: Ord + Copy + Default + Debug {}
+impl<T> Eq for RotatedArraySet<T> where T: Ord + Copy + Default + Debug {}
 
-impl<T> Hash for SortedVec<T>
+impl<T> Hash for RotatedArraySet<T>
 where
     T: Ord + Copy + Default + Debug + Hash,
 {
@@ -1504,7 +1506,7 @@ where
 
 impl<T> FusedIterator for Iter<'_, T> where T: Ord + Copy + Default + Debug {}
 
-impl<'a, T> IntoIterator for &'a SortedVec<T>
+impl<'a, T> IntoIterator for &'a RotatedArraySet<T>
 where
     T: Ord + Copy + Default + Debug,
 {
@@ -1516,7 +1518,7 @@ where
     }
 }
 
-impl<T> IntoIterator for SortedVec<T>
+impl<T> IntoIterator for RotatedArraySet<T>
 where
     T: Ord + Copy + Default + Debug,
 {
@@ -1667,12 +1669,12 @@ where
 
 impl<T> FusedIterator for Union<'_, T> where T: Ord + Copy + Default + Debug {}
 
-impl<'a, T> From<&'a [T]> for SortedVec<T>
+impl<'a, T> From<&'a [T]> for RotatedArraySet<T>
 where
     T: Ord + Copy + Default + Debug,
 {
     fn from(slice: &[T]) -> Self {
-        let mut this = SortedVec {
+        let mut this = RotatedArraySet {
             data: slice.to_vec(),
             min_indexes: Vec::new(),
             min_data: Vec::new(),
@@ -1682,12 +1684,12 @@ where
     }
 }
 
-impl<T> From<Vec<T>> for SortedVec<T>
+impl<T> From<Vec<T>> for RotatedArraySet<T>
 where
     T: Ord + Copy + Default + Debug,
 {
     fn from(vec: Vec<T>) -> Self {
-        let mut this = SortedVec {
+        let mut this = RotatedArraySet {
             data: vec,
             min_indexes: Vec::new(),
             min_data: Vec::new(),
@@ -1697,7 +1699,7 @@ where
     }
 }
 
-impl<T> Into<Vec<T>> for SortedVec<T>
+impl<T> Into<Vec<T>> for RotatedArraySet<T>
 where
     T: Ord + Copy + Default + Debug,
 {
@@ -1720,12 +1722,12 @@ where
     }
 }
 
-impl<T> FromIterator<T> for SortedVec<T>
+impl<T> FromIterator<T> for RotatedArraySet<T>
 where
     T: Ord + Copy + Default + Debug,
 {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        let mut this = SortedVec {
+        let mut this = RotatedArraySet {
             data: Vec::from_iter(iter.into_iter()),
             min_indexes: Vec::new(),
             min_data: Vec::new(),
@@ -1735,11 +1737,11 @@ where
     }
 }
 
-impl<T> Default for SortedVec<T>
+impl<T> Default for RotatedArraySet<T>
 where
     T: Ord + Copy + Default + Debug,
 {
-    fn default() -> SortedVec<T> {
-        SortedVec::new()
+    fn default() -> RotatedArraySet<T> {
+        RotatedArraySet::new()
     }
 }

@@ -1,14 +1,14 @@
 // adapted from https://github.com/ssomers/rust_bench_btreeset_intersection/blob/master/src/tests/set.rs
 extern crate proptest;
 use self::proptest::prelude::*;
-use sorted_vec::SortedVec;
-use std::collections::BTreeSet;
+use rotated_array_set::RotatedArraySet;
 use std::cmp::min;
+use std::collections::BTreeSet;
 
 fn assert_difference<'a, I: Iterator<Item = &'a u8>>(
     mut it: I,
-    s1: &'a SortedVec<u8>,
-    s2: &'a SortedVec<u8>,
+    s1: &'a RotatedArraySet<u8>,
+    s2: &'a RotatedArraySet<u8>,
 ) -> Result<(), TestCaseError> {
     let mut count: usize = 0;
     let mut previous: i32 = -1;
@@ -28,8 +28,8 @@ fn assert_difference<'a, I: Iterator<Item = &'a u8>>(
 
 fn assert_intersection<'a, I: Iterator<Item = &'a u8>>(
     mut it: I,
-    s1: &'a SortedVec<u8>,
-    s2: &'a SortedVec<u8>,
+    s1: &'a RotatedArraySet<u8>,
+    s2: &'a RotatedArraySet<u8>,
 ) -> Result<(), TestCaseError> {
     let mut count: usize = 0;
     let mut previous: i32 = -1;
@@ -49,8 +49,8 @@ fn assert_intersection<'a, I: Iterator<Item = &'a u8>>(
 
 fn assert_symmetric_difference<'a, I: Iterator<Item = &'a u8>>(
     mut it: I,
-    s1: &'a SortedVec<u8>,
-    s2: &'a SortedVec<u8>,
+    s1: &'a RotatedArraySet<u8>,
+    s2: &'a RotatedArraySet<u8>,
 ) -> Result<(), TestCaseError> {
     let mut count: usize = 0;
     let mut previous: i32 = -1;
@@ -72,8 +72,8 @@ fn assert_symmetric_difference<'a, I: Iterator<Item = &'a u8>>(
 
 fn assert_union<'a, I: Iterator<Item = &'a u8>>(
     mut it: I,
-    s1: &'a SortedVec<u8>,
-    s2: &'a SortedVec<u8>,
+    s1: &'a RotatedArraySet<u8>,
+    s2: &'a RotatedArraySet<u8>,
 ) -> Result<(), TestCaseError> {
     let mut count: usize = 0;
     let mut previous: i32 = -1;
@@ -96,7 +96,7 @@ fn assert_union<'a, I: Iterator<Item = &'a u8>>(
 prop_compose! {
     fn arbitrary_instance()
                     (set: BTreeSet<u8>)
-                    -> SortedVec<u8>
+                    -> RotatedArraySet<u8>
     {
         set.iter().cloned().collect()
     }
@@ -108,7 +108,7 @@ prop_compose! {
     fn arbitrary_instance_with_index()
                     (set in any::<BTreeSet<u8>>())
                     (index in 0..=set.len(), set in Just(set))
-                    -> (SortedVec<u8>, usize)
+                    -> (RotatedArraySet<u8>, usize)
     {
         (set.iter().cloned().collect(), index)
     }
@@ -118,7 +118,7 @@ prop_compose! {
     fn aligned_ranges()
                      (mut s1 in arbitrary_instance(),
                       mut s2 in arbitrary_instance())
-                     -> (SortedVec<u8>, SortedVec<u8>)
+                     -> (RotatedArraySet<u8>, RotatedArraySet<u8>)
     {
         s1.insert(u8::min_value());
         s2.insert(u8::min_value());
@@ -132,7 +132,7 @@ prop_compose! {
     fn left_aligned_ranges()
                           (mut s1 in arbitrary_instance(),
                            mut s2 in arbitrary_instance())
-                          -> (SortedVec<u8>, SortedVec<u8>)
+                          -> (RotatedArraySet<u8>, RotatedArraySet<u8>)
     {
         s1.insert(u8::min_value());
         s2.insert(u8::min_value());
@@ -144,7 +144,7 @@ prop_compose! {
     fn right_aligned_ranges()
                            (mut s1 in arbitrary_instance(),
                             mut s2 in arbitrary_instance())
-                           -> (SortedVec<u8>, SortedVec<u8>)
+                           -> (RotatedArraySet<u8>, RotatedArraySet<u8>)
     {
         s1.insert(u8::max_value());
         s2.insert(u8::max_value());
@@ -156,7 +156,7 @@ prop_compose! {
     fn disjoint_ranges()
                       (mut s1 in arbitrary_instance(),
                        right_then_left: bool)
-                      -> (SortedVec<u8>, SortedVec<u8>)
+                      -> (RotatedArraySet<u8>, RotatedArraySet<u8>)
     {
         let split = (u8::max_value() - u8::min_value()) / 2;
         let mut s2 = s1.split_off(&split);
@@ -170,7 +170,7 @@ prop_compose! {
     fn touching_ranges()
                       (mut s1 in arbitrary_instance(),
                        right_then_left: bool)
-                      -> (SortedVec<u8>, SortedVec<u8>)
+                      -> (RotatedArraySet<u8>, RotatedArraySet<u8>)
     {
         let split = (u8::max_value() - u8::min_value()) / 2;
         let mut s2 = s1.split_off(&split);
@@ -183,122 +183,122 @@ prop_compose! {
 proptest! {
     #[test]
     fn difference_arbitrary(s1 in arbitrary_instance(), s2 in arbitrary_instance()) {
-        assert_difference(SortedVec::difference(&s1, &s2), &s1, &s2)?
+        assert_difference(RotatedArraySet::difference(&s1, &s2), &s1, &s2)?
     }
 
     #[test]
     fn difference_aligned_left((s1, s2) in left_aligned_ranges()) {
-        assert_difference(SortedVec::difference(&s1, &s2), &s1, &s2)?
+        assert_difference(RotatedArraySet::difference(&s1, &s2), &s1, &s2)?
     }
 
     #[test]
     fn difference_aligned_right((s1, s2) in right_aligned_ranges()) {
-        assert_difference(SortedVec::difference(&s1, &s2), &s1, &s2)?
+        assert_difference(RotatedArraySet::difference(&s1, &s2), &s1, &s2)?
     }
 
     #[test]
     fn difference_aligned_both((s1, s2) in aligned_ranges()) {
-        assert_difference(SortedVec::difference(&s1, &s2), &s1, &s2)?
+        assert_difference(RotatedArraySet::difference(&s1, &s2), &s1, &s2)?
     }
 
     #[test]
     fn difference_disjoint((s1, s2) in disjoint_ranges()) {
-        assert_difference(SortedVec::difference(&s1, &s2), &s1, &s2)?
+        assert_difference(RotatedArraySet::difference(&s1, &s2), &s1, &s2)?
     }
 
     #[test]
     fn difference_touching((s1, s2) in touching_ranges()) {
-        assert_difference(SortedVec::difference(&s1, &s2), &s1, &s2)?
+        assert_difference(RotatedArraySet::difference(&s1, &s2), &s1, &s2)?
     }
 
     #[test]
     fn intersection_arbitrary(s1 in arbitrary_instance(), s2 in arbitrary_instance()) {
-        assert_intersection(SortedVec::intersection(&s1, &s2), &s1, &s2)?
+        assert_intersection(RotatedArraySet::intersection(&s1, &s2), &s1, &s2)?
     }
 
     #[test]
     fn intersection_aligned_left((s1, s2) in left_aligned_ranges()) {
-        assert_intersection(SortedVec::intersection(&s1, &s2), &s1, &s2)?
+        assert_intersection(RotatedArraySet::intersection(&s1, &s2), &s1, &s2)?
     }
 
     #[test]
     fn intersection_aligned_right((s1, s2) in right_aligned_ranges()) {
-        assert_intersection(SortedVec::intersection(&s1, &s2), &s1, &s2)?
+        assert_intersection(RotatedArraySet::intersection(&s1, &s2), &s1, &s2)?
     }
 
     #[test]
     fn intersection_aligned_both((s1, s2) in aligned_ranges()) {
-        assert_intersection(SortedVec::intersection(&s1, &s2), &s1, &s2)?
+        assert_intersection(RotatedArraySet::intersection(&s1, &s2), &s1, &s2)?
     }
 
     #[test]
     fn intersection_disjoint1((s1, s2) in disjoint_ranges()) {
-        assert_intersection(SortedVec::intersection(&s1, &s2), &s1, &s2)?
+        assert_intersection(RotatedArraySet::intersection(&s1, &s2), &s1, &s2)?
     }
 
     #[test]
     fn intersection_touching((s2, s1) in touching_ranges()) {
-        assert_intersection(SortedVec::intersection(&s1, &s2), &s1, &s2)?
+        assert_intersection(RotatedArraySet::intersection(&s1, &s2), &s1, &s2)?
     }
 
     #[test]
     fn symmetric_difference_arbitrary(s1 in arbitrary_instance(), s2 in arbitrary_instance()) {
-        assert_symmetric_difference(SortedVec::symmetric_difference(&s1, &s2), &s1, &s2)?
+        assert_symmetric_difference(RotatedArraySet::symmetric_difference(&s1, &s2), &s1, &s2)?
     }
 
     #[test]
     fn symmetric_difference_aligned_left((s1, s2) in left_aligned_ranges()) {
-        assert_symmetric_difference(SortedVec::symmetric_difference(&s1, &s2), &s1, &s2)?
+        assert_symmetric_difference(RotatedArraySet::symmetric_difference(&s1, &s2), &s1, &s2)?
     }
 
     #[test]
     fn symmetric_difference_aligned_right((s1, s2) in right_aligned_ranges()) {
-        assert_symmetric_difference(SortedVec::symmetric_difference(&s1, &s2), &s1, &s2)?
+        assert_symmetric_difference(RotatedArraySet::symmetric_difference(&s1, &s2), &s1, &s2)?
     }
 
     #[test]
     fn symmetric_difference_aligned_both((s1, s2) in aligned_ranges()) {
-        assert_symmetric_difference(SortedVec::symmetric_difference(&s1, &s2), &s1, &s2)?
+        assert_symmetric_difference(RotatedArraySet::symmetric_difference(&s1, &s2), &s1, &s2)?
     }
 
     #[test]
     fn symmetric_difference_disjoint1((s1, s2) in disjoint_ranges()) {
-        assert_symmetric_difference(SortedVec::symmetric_difference(&s1, &s2), &s1, &s2)?
+        assert_symmetric_difference(RotatedArraySet::symmetric_difference(&s1, &s2), &s1, &s2)?
     }
 
     #[test]
     fn symmetric_difference_touching((s2, s1) in touching_ranges()) {
-        assert_symmetric_difference(SortedVec::symmetric_difference(&s1, &s2), &s1, &s2)?
+        assert_symmetric_difference(RotatedArraySet::symmetric_difference(&s1, &s2), &s1, &s2)?
     }
 
     #[test]
     fn union_arbitrary(s1 in arbitrary_instance(), s2 in arbitrary_instance()) {
-        assert_union(SortedVec::union(&s1, &s2), &s1, &s2)?
+        assert_union(RotatedArraySet::union(&s1, &s2), &s1, &s2)?
     }
 
     #[test]
     fn union_aligned_left((s1, s2) in left_aligned_ranges()) {
-        assert_union(SortedVec::union(&s1, &s2), &s1, &s2)?
+        assert_union(RotatedArraySet::union(&s1, &s2), &s1, &s2)?
     }
 
     #[test]
     fn union_aligned_right((s1, s2) in right_aligned_ranges()) {
-        assert_union(SortedVec::union(&s1, &s2), &s1, &s2)?
+        assert_union(RotatedArraySet::union(&s1, &s2), &s1, &s2)?
     }
 
     #[test]
     fn union_aligned_both((s1, s2) in aligned_ranges()) {
-        assert_union(SortedVec::union(&s1, &s2), &s1, &s2)?
+        assert_union(RotatedArraySet::union(&s1, &s2), &s1, &s2)?
     }
 
     #[test]
     fn union_disjoint1((s1, s2) in disjoint_ranges()) {
-        assert_union(SortedVec::union(&s1, &s2), &s1, &s2)?
+        assert_union(RotatedArraySet::union(&s1, &s2), &s1, &s2)?
     }
 
     #[test]
     fn union_touching((s2, s1) in touching_ranges()) {
-        assert_union(SortedVec::union(&s1, &s2), &s1, &s2)?
+        assert_union(RotatedArraySet::union(&s1, &s2), &s1, &s2)?
     }
 
     #[test]
