@@ -1,11 +1,11 @@
 //! An ordered set based on a 2-level rotated array.
 //!
-//! See <a href="https://github.com/senderista/sorted-vec/blob/master/README.md">the repository README</a> for a detailed discussion of this collection's performance
+//! See <a href="https://github.com/senderista/rotated-array-vec/blob/master/README.md">the repository README</a> for a detailed discussion of this collection's performance
 //! benefits and drawbacks.
 
-#![doc(html_root_url = "https://senderista.github.io/sorted-vec/")]
+#![doc(html_root_url = "https://senderista.github.io/rotated-array-vec/")]
 #![doc(
-    html_logo_url = "https://raw.githubusercontent.com/senderista/sorted-vec/master/img/cells.png"
+    html_logo_url = "https://raw.githubusercontent.com/senderista/rotated-array-vec/master/img/cells.png"
 )]
 
 use std::cmp::Ordering::{self, Equal, Greater, Less};
