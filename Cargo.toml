@@ -3,6 +3,9 @@ name = "rotated-array-set"
 version = "0.1.0"
 authors = ["Tobin Baker <tobin.d.baker@gmail.com>"]
 edition = "2018"
+license = "Apache-2.0"
+description = "An ordered set implemented as a 2-level rotated array"
+repository = "https://github.com/senderista/rotated-array-set"
 
 [lib]
 name = "rotated_array_set"
