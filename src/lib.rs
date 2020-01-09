@@ -3,7 +3,7 @@
 //! See <a href="https://github.com/senderista/rotated-array-set/blob/master/README.md">the repository README</a> for a detailed discussion of this collection's performance
 //! benefits and drawbacks.
 
-#![doc(html_root_url = "https://senderista.github.io/rotated-array-set/")]
+#![doc(html_root_url = "https://docs.rs/rotated-array-set/0.1.0/rotated_array_set/")]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/senderista/rotated-array-set/master/img/cells.png"
 )]
