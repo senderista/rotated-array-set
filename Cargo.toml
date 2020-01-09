@@ -1,10 +1,10 @@
 [package]
 name = "rotated-array-set"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Tobin Baker <tobin.d.baker@gmail.com>"]
 edition = "2018"
 license = "Apache-2.0"
-description = "An ordered set implemented as a 2-level rotated array"
+description = "An ordered set supporting O(1) rank and O(√n) inserts and deletes"
 repository = "https://github.com/senderista/rotated-array-set"
 exclude = ["img/*"]
 
