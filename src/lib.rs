@@ -1192,7 +1192,14 @@ where
     fn integer_sum_inverse(n: usize) -> usize {
         // y = (x * (x + 1)) / 2
         // x = (sqrt(8 * y + 1) - 1) / 2
-        ((f64::from((n * 8 + 1) as u32).sqrt() as usize) - 1) / 2
+        let floaty = ((n as f64 * 8.0 + 1.0).sqrt() - 1.0) / 2.0;
+        let tmp = floaty as usize;
+        let sum = Self::integer_sum(tmp);
+        if sum <= n {
+            tmp
+        } else {
+            tmp - 1
+        }
     }
 
     fn get_subarray_idx_from_array_idx(idx: usize) -> usize {
