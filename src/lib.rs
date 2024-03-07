@@ -1776,7 +1776,7 @@ mod test {
 
     prop_compose! {
         /// generates integer_sum(?) - 1, integer_sum(?), and integer_sum(?) + 1.
-        fn inverse_boundary()(n in 0..(1usize<<31), d in 0usize..3) -> usize {
+        fn inverse_boundary()(n in 0..(((usize::MAX/2) as f64).sqrt() as usize), d in 0usize..3) -> usize {
             RotatedArraySet::<u8>::integer_sum(n)
                 .wrapping_add(d)
                 .wrapping_sub(1)
