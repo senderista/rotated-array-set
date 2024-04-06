@@ -1192,7 +1192,14 @@ where
     fn integer_sum_inverse(n: usize) -> usize {
         // y = (x * (x + 1)) / 2
         // x = (sqrt(8 * y + 1) - 1) / 2
-        ((f64::from((n * 8 + 1) as u32).sqrt() as usize) - 1) / 2
+        let floaty = ((n as f64 * 8.0 + 1.0).sqrt() - 1.0) / 2.0;
+        let tmp = floaty as usize;
+        let sum = Self::integer_sum(tmp);
+        if sum <= n {
+            tmp
+        } else {
+            tmp - 1
+        }
     }
 
     fn get_subarray_idx_from_array_idx(idx: usize) -> usize {
@@ -1743,5 +1750,53 @@ where
 {
     fn default() -> RotatedArraySet<T> {
         RotatedArraySet::new()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::RotatedArraySet;
+    use proptest::prelude::*;
+
+    fn assert_sum_invariant(n: usize) -> Result<(), TestCaseError> {
+        let sum = RotatedArraySet::<u8>::integer_sum(n);
+        let inv = RotatedArraySet::<u8>::integer_sum_inverse(sum);
+        prop_assert_eq!(n, inv);
+        Ok(())
+    }
+
+    fn assert_inverse_invariant(n: usize) -> Result<(), TestCaseError> {
+        let inv = RotatedArraySet::<u8>::integer_sum_inverse(n);
+        let sum_lower = RotatedArraySet::<u8>::integer_sum(inv);
+        let sum_upper = RotatedArraySet::<u8>::integer_sum(inv + 1);
+        prop_assert!(sum_lower <= n);
+        prop_assert!(n < sum_upper);
+        Ok(())
+    }
+
+    prop_compose! {
+        /// generates integer_sum(?) - 1, integer_sum(?), and integer_sum(?) + 1.
+        fn inverse_boundary()(n in 0..(((usize::MAX/2) as f64).sqrt() as usize), d in 0usize..3) -> usize {
+            RotatedArraySet::<u8>::integer_sum(n)
+                .wrapping_add(d)
+                .wrapping_sub(1)
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn take_sum_and_inverse(n in 0..(((usize::MAX/2) as f64).sqrt() as usize)) {
+            assert_sum_invariant(n)?
+        }
+
+        #[test]
+        fn take_inverse_and_sum(n in 0..usize::MAX/2) {
+            assert_inverse_invariant(n)?
+        }
+
+        #[test]
+        fn take_inverse_and_sum_on_inverse_boundary(n in inverse_boundary()) {
+            assert_inverse_invariant(n)?
+        }
     }
 }
